@@ -394,21 +394,26 @@
     }
 
     function muatDataMonitoring() {
-        const listDiv = document.getElementById('monitoringList');
-        listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data real-time...</p>';
+    const listDiv = document.getElementById('monitoringList');
+    listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data real-time...</p>';
 
-        fetch(`${URL_GOOGLE_SCRIPT}?action=getMonitoring`)
-            .then(res => res.json())
-            .then(respons => {
-                if (respons.status === "success") {
-                    rawMonitoringData = respons.absenToday || [];
-                    renderMonitoringList();
-                }
-            })
-            .catch(err => {
-                listDiv.innerHTML = '<p style="text-align: center; color: var(--error); padding: 20px;">Gagal mengambil data monitoring.</p>';
-            });
-    }
+    // Memastikan parameter action terisi dengan benar
+    const fetchUrl = URL_GOOGLE_SCRIPT + (URL_GOOGLE_SCRIPT.includes('?') ? '&' : '?') + 'action=getMonitoring';
+
+    fetch(fetchUrl)
+        .then(res => res.json())
+        .then(respons => {
+            if (respons.status === "success" && respons.absenToday) {
+                rawMonitoringData = respons.absenToday;
+                renderMonitoringList();
+            } else {
+                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
+            }
+        })
+        .catch(err => {
+            listDiv.innerHTML = '<p style="text-align: center; color: var(--error); padding: 20px;">Gagal mengambil data monitoring.</p>';
+        });
+}
 
     function renderMonitoringList() {
         const selectedToko = document.getElementById('filterToko').value;
