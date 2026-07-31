@@ -67,23 +67,26 @@
         .stat-card h4 { font-size: 20px; color: var(--primary); font-weight: 700; }
         .stat-card p { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 
-        .absen-list { max-height: 420px; overflow-y: auto; text-align: left; margin-top: 10px; }
-        .absen-item { background: #fff; border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; margin-bottom: 10px; font-size: 12px; display: flex; gap: 12px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .absen-list { max-height: 480px; overflow-y: auto; text-align: left; margin-top: 10px; }
         
-        /* Thumbnail Foto Absen */
-        .thumb-box { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: #e2e8f0; flex-shrink: 0; cursor: pointer; border: 1px solid var(--border-color); }
-        .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
-        .thumb-no-photo { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 10px; color: var(--text-muted); text-align: center; background: #f1f5f9; }
+        /* Card per Karyawan (Grouping IN/OUT) */
+        .user-card { background: #fff; border: 1px solid var(--border-color); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .user-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; margin-bottom: 10px; }
+        .user-card-header h5 { font-size: 14px; font-weight: 700; color: var(--text-main); }
+        .user-card-header span { font-size: 11px; color: var(--text-muted); }
 
-        .absen-details { flex: 1; }
-        .absen-details h5 { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
-        .absen-details p { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+        .io-grid { display: flex; gap: 10px; }
+        .io-box { flex: 1; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 8px; text-align: center; }
+        .io-title { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+        .io-title.in { background: #dcfce7; color: #166534; }
+        .io-title.out { background: #fee2e2; color: #991b1b; }
         
-        .badge { padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 10px; display: inline-block; }
-        .badge-in { background: #dcfce7; color: #166534; }
-        .badge-out { background: #fee2e2; color: #991b1b; }
-        .badge-off { background: #fef3c7; color: #92400e; }
-        .badge-cuti { background: #e0e7ff; color: #3730a3; }
+        .thumb-box { width: 100%; height: 75px; border-radius: 8px; overflow: hidden; background: #e2e8f0; margin-bottom: 6px; cursor: pointer; }
+        .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+        .thumb-empty { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 10px; color: #94a3b8; }
+
+        .io-time { font-size: 11px; font-weight: 700; color: var(--text-main); }
+        .io-dist { font-size: 10px; font-weight: 600; margin-top: 2px; }
 
         /* Modal Preview Foto Besar */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; padding: 16px; }
@@ -226,7 +229,7 @@
     </div>
 
     <script>
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycby2WIurKrzozNdCAiVtsH1xNhyCL2A02q-RwqOjOypnKtpOJ31bcXGzyEx0rFyvHT3T_w/exec";
+        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbzcHxPVm8Z8HiO2wuYZbbFg1ZGq-bp1OvuU3oG3WEQsmFvvjyOkGoZCvSVqQLfs-sclpA/exec";
 
         let currentMode = 'guest';
         let pendingMode = '';
@@ -379,7 +382,10 @@
                 .then(respons => {
                     if (respons.status === "success") {
                         rawMonitoringData = respons.absenToday || [];
-                        document.getElementById('stat-total').innerText = rawMonitoringData.length;
+                        
+                        // Hitung jumlah karyawan unik yang absen
+                        const userUnik = new Set(rawMonitoringData.map(item => item.nik));
+                        document.getElementById('stat-total').innerText = userUnik.size;
                         
                         const tokoUnik = new Set(rawMonitoringData.map(item => item.toko));
                         document.getElementById('stat-toko').innerText = tokoUnik.size;
@@ -394,6 +400,7 @@
             const listDiv = document.getElementById('monitoringList');
             listDiv.innerHTML = '';
 
+            // Filter berdasar Toko
             const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
 
             if (filtered.length === 0) {
@@ -401,55 +408,95 @@
                 return;
             }
 
+            // Grouping Data berdasarkan NIK
+            const groupedUser = {};
             filtered.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'absen-item';
-                
-                let badgeClass = 'badge-in';
-                if (item.tipe === 'OUT') badgeClass = 'badge-out';
-                if (item.tipe === 'OFF') badgeClass = 'badge-off';
-                if (item.tipe === 'CUTI') badgeClass = 'badge-cuti';
+                if (!groupedUser[item.nik]) {
+                    groupedUser[item.nik] = {
+                        nik: item.nik,
+                        nama: item.nama,
+                        toko: item.toko,
+                        shift: item.shift,
+                        in: null,
+                        out: null
+                    };
+                }
+                // Ambil data IN atau OUT paling akhir
+                if (item.tipe === 'IN') groupedUser[item.nik].in = item;
+                if (item.tipe === 'OUT') groupedUser[item.nik].out = item;
+            });
 
-                let jarakInfo = "Jarak: -";
-                let jarakStyle = "color: #64748b;";
-                if (item.jarak !== null && item.jarak !== undefined && item.tipe !== 'OFF' && item.tipe !== 'CUTI') {
-                    if (item.jarak <= 100) {
-                        jarakInfo = `📍 Jarak: ${item.jarak}m (Sesuai)`;
-                        jarakStyle = "color: #10b981; font-weight: 600;";
-                    } else {
-                        jarakInfo = `⚠️ Jarak: ${item.jarak}m (Luar Radius)`;
-                        jarakStyle = "color: #ef4444; font-weight: 600;";
+            // Render Tampilan Card per Karyawan
+            Object.values(groupedUser).forEach(user => {
+                const el = document.createElement('div');
+                el.className = 'user-card';
+
+                // Format Waktu Masuk (IN)
+                let inTimeStr = "--:--";
+                let inDistStr = "";
+                let inPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
+                
+                if (user.in) {
+                    const dIn = new Date(user.in.timestamp);
+                    inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
+                    
+                    if (user.in.foto && user.in.foto.length > 20) {
+                        inPhotoHtml = `<img src="${user.in.foto}" alt="IN" onclick="viewLargePhoto('${user.in.foto}', '${user.nama} (IN)')">`;
+                    }
+                    if (user.in.jarak !== null && user.in.jarak !== undefined) {
+                        const styleJarak = user.in.jarak <= 100 ? 'color: #10b981' : 'color: #ef4444';
+                        inDistStr = `<div class="io-dist" style="${styleJarak}">${user.in.jarak}m</div>`;
                     }
                 }
 
-                // Cek ketersediaan Foto Thumbnail
-                let photoHtml = '<div class="thumb-no-photo">Tanpa Foto</div>';
-                if (item.foto && item.foto.length > 20) {
-                    photoHtml = `<img src="${item.foto}" alt="${item.nama}" onclick="viewLargePhoto('${item.foto}', '${item.nama}')">`;
+                // Format Waktu Keluar (OUT)
+                let outTimeStr = "--:--";
+                let outDistStr = "";
+                let outPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
+
+                if (user.out) {
+                    const dOut = new Date(user.out.timestamp);
+                    outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
+
+                    if (user.out.foto && user.out.foto.length > 20) {
+                        outPhotoHtml = `<img src="${user.out.foto}" alt="OUT" onclick="viewLargePhoto('${user.out.foto}', '${user.nama} (OUT)')">`;
+                    }
+                    if (user.out.jarak !== null && user.out.jarak !== undefined) {
+                        const styleJarak = user.out.jarak <= 100 ? 'color: #10b981' : 'color: #ef4444';
+                        outDistStr = `<div class="io-dist" style="${styleJarak}">${user.out.jarak}m</div>`;
+                    }
                 }
 
-                let ketHtml = item.keterangan ? `<p style="font-size: 11px; color: var(--primary); margin-top: 2px;">💬 <i>"${item.keterangan}"</i></p>` : '';
-
                 el.innerHTML = `
-                    <div class="thumb-box">${photoHtml}</div>
-                    <div class="absen-details">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <h5>${item.nama}</h5>
-                            <span class="badge ${badgeClass}">${item.tipe}</span>
+                    <div class="user-card-header">
+                        <div>
+                            <h5>${user.nama}</h5>
+                            <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
                         </div>
-                        <p><strong>NIK:</strong> ${item.nik} | <strong>Shift:</strong> ${item.shift}</p>
-                        <p><strong>Toko:</strong> <span style="color: #0f172a; font-weight: 600;">${item.toko || '-'}</span></p>
-                        <p style="${jarakStyle}">${jarakInfo}</p>
-                        ${ketHtml}
+                        <span style="font-weight:700; color:var(--primary); font-size:12px;">📍 ${user.toko}</span>
+                    </div>
+                    <div class="io-grid">
+                        <div class="io-box">
+                            <span class="io-title in">MASUK (IN)</span>
+                            <div class="thumb-box">${inPhotoHtml}</div>
+                            <div class="io-time">${inTimeStr}</div>
+                            ${inDistStr}
+                        </div>
+                        <div class="io-box">
+                            <span class="io-title out">KELUAR (OUT)</span>
+                            <div class="thumb-box">${outPhotoHtml}</div>
+                            <div class="io-time">${outTimeStr}</div>
+                            ${outDistStr}
+                        </div>
                     </div>
                 `;
                 listDiv.appendChild(el);
             });
         }
 
-        function viewLargePhoto(src, name) {
+        function viewLargePhoto(src, title) {
             document.getElementById('largePhoto').src = src;
-            document.getElementById('photoModalTitle').innerText = `Foto Absen: ${name}`;
+            document.getElementById('photoModalTitle').innerText = title;
             document.getElementById('photoModal').style.display = 'flex';
         }
 
