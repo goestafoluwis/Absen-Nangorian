@@ -285,7 +285,6 @@
 
         .badge-status.working { background: #fef3c7; color: #92400e; }
         .badge-status.done { background: #dbeafe; color: #1e40af; }
-        .badge-status.absent { background: #f3f4f6; color: #6b7280; }
 
         .badge-late {
             font-size: 10px;
@@ -351,6 +350,27 @@
 
         .maps-link:hover { text-decoration: underline; }
 
+        /* Admin Styles */
+        .admin-card {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .admin-card h5 {
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: var(--primary);
+        }
+
+        .admin-card p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
         /* Modal Preview */
         .modal {
             display: none;
@@ -375,8 +395,8 @@
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('absen')">Guest</button>
-        <button class="tab-btn" onclick="switchTab('superior')">Superior</button>
-        <button class="tab-btn" onclick="switchTab('admin')">Admin</button>
+        <button class="tab-btn" onclick="switchTab('superior')">Superior 🔒</button>
+        <button class="tab-btn" onclick="switchTab('admin')">Admin 🔒</button>
     </div>
 
     <!-- TAB 1: FORM ABSENSI -->
@@ -448,7 +468,6 @@
             <p>Pemantauan Kehadiran Tim Hari Ini</p>
         </div>
 
-        <!-- 4 Quick Stat Cards -->
         <div class="stats-grid">
             <div class="stat-card">
                 <h3 id="stat-total">0</h3>
@@ -468,7 +487,6 @@
             </div>
         </div>
 
-        <!-- Filters & Refresh -->
         <div class="filter-row">
             <select id="filterToko" class="form-control" onchange="renderMonitoringList()">
                 <option value="">Semua Lokasi Toko</option>
@@ -487,13 +505,30 @@
         </div>
     </div>
 
-    <!-- TAB 3: ADMIN -->
+    <!-- TAB 3: ADMIN PANEL -->
     <div id="tab-admin" class="tab-content">
         <div class="header-title">
-            <h4>Panel Admin</h4>
-            <p>Akses Terbatas</p>
+            <h4>Panel Admin & Master Data</h4>
+            <p>Kelola Sistem & Master Data Karyawan</p>
         </div>
-        <p style="text-align:center; color: var(--text-muted); padding:20px;">Fitur Admin sedang dalam pengembangan.</p>
+
+        <div class="admin-card">
+            <h5>👥 Master Data Karyawan</h5>
+            <p>Total terdaftar: <strong id="admin-count-karyawan">0</strong> Karyawan</p>
+            <button class="btn-refresh" style="width:100%;" onclick="fetchMasterData()">🔄 Refresh Master Data</button>
+        </div>
+
+        <div class="admin-card">
+            <h5>🏪 Master Data Toko</h5>
+            <p>Total terdaftar: <strong id="admin-count-toko">0</strong> Toko</p>
+            <button class="btn-refresh" style="width:100%;" onclick="fetchMasterData()">🔄 Synchronize Toko</button>
+        </div>
+
+        <div class="admin-card">
+            <h5>📊 Google Sheets Direct Link</h5>
+            <p>Untuk mengedit master karyawan/toko & melihat rekap full, buka Google Sheets utama:</p>
+            <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-submit" style="display:block; text-align:center; text-decoration:none; padding:8px;">📁 Buka Google Sheets</a>
+        </div>
     </div>
 </div>
 
@@ -503,10 +538,15 @@
 </div>
 
 <script>
-    // URL Web App Google Apps Script Terbaru
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6ZmTAZf2k1SxZ_HaJkyoKWcg4Drd1M-xITITTr7aVCUHuOlRZ8bHugb-jpwZZcOap_Q/exec"; 
 
-    // Jam Batas Shift Masuk untuk Indikator Telat
+    // PIN KEAMANAN DEFAULT
+    const PIN_SUPERIOR = "1234";
+    const PIN_ADMIN = "8888";
+
+    let isSuperiorAuthenticated = false;
+    let isAdminAuthenticated = false;
+
     const SHIFT_LIMIT = {
         "Pagi": "08:15",
         "Middle": "11:15",
@@ -527,6 +567,27 @@
     });
 
     function switchTab(tabName) {
+        // PERIKSA SANDI / PIN SEBELUM MASUK TAB
+        if (tabName === 'superior' && !isSuperiorAuthenticated) {
+            const pass = prompt("🔐 Masukkan PIN Superior:");
+            if (pass === PIN_SUPERIOR) {
+                isSuperiorAuthenticated = true;
+            } else {
+                alert("❌ PIN Salah!");
+                return;
+            }
+        }
+
+        if (tabName === 'admin' && !isAdminAuthenticated) {
+            const pass = prompt("🔐 Masukkan PIN Admin:");
+            if (pass === PIN_ADMIN) {
+                isAdminAuthenticated = true;
+            } else {
+                alert("❌ PIN Salah!");
+                return;
+            }
+        }
+
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
@@ -546,7 +607,6 @@
         }
     }
 
-    // --- GEOLOCATION GPS ---
     function getGeoLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -556,7 +616,6 @@
         }
     }
 
-    // --- CAMERA SYSTEM ---
     async function initCamera() {
         try {
             const video = document.getElementById('webcam');
@@ -617,7 +676,6 @@
         btnCapture.style.display = 'block';
     }
 
-    // --- FETCH MASTER DATA ---
     async function fetchMasterData() {
         try {
             const res = await fetch(SCRIPT_URL);
@@ -626,6 +684,10 @@
             if (data.status === 'success') {
                 karyawanMap = data.karyawan || {};
                 tokoList = data.toko || [];
+
+                // Update info di Panel Admin
+                document.getElementById('admin-count-karyawan').innerText = Object.keys(karyawanMap).length;
+                document.getElementById('admin-count-toko').innerText = tokoList.length;
 
                 const tokoSelect = document.getElementById('tokoInput');
                 const filterToko = document.getElementById('filterToko');
@@ -649,7 +711,6 @@
         namaInput.value = karyawanMap[nik] || "";
     }
 
-    // --- SUBMIT ABSENSI ---
     async function handleAbsenSubmit(e) {
         e.preventDefault();
 
@@ -708,7 +769,6 @@
         msgBox.className = `msg-box ${type}`;
     }
 
-    // --- MONITORING SUPERIOR ---
     async function fetchMonitoringData() {
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data absensi...</p>';
@@ -735,7 +795,6 @@
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
 
-        // Filter Toko
         let filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
 
         if (filtered.length === 0) {
@@ -744,7 +803,6 @@
             return;
         }
 
-        // Grouping berdasarkan NIK
         const groupedUser = {};
         filtered.forEach(item => {
             if (!groupedUser[item.nik]) {
@@ -760,7 +818,6 @@
             }
             if (String(item.tipe).toUpperCase() === 'IN') {
                 groupedUser[item.nik].in = item;
-                // Cek Keterlambatan
                 const dIn = new Date(item.timestamp);
                 if (!isNaN(dIn)) {
                     const timeStr = dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -773,7 +830,6 @@
 
         let userList = Object.values(groupedUser);
 
-        // Calculate Stats
         let countWorking = 0;
         let countDone = 0;
         let countLate = 0;
@@ -786,7 +842,6 @@
 
         updateStats(userList.length, countWorking, countDone, countLate);
 
-        // Filter Status
         if (selectedStatus === 'WORKING') userList = userList.filter(u => u.in && !u.out);
         if (selectedStatus === 'DONE') userList = userList.filter(u => u.in && u.out);
         if (selectedStatus === 'LATE') userList = userList.filter(u => u.isLate);
@@ -800,15 +855,12 @@
             const el = document.createElement('div');
             el.className = 'user-card';
 
-            // Badge Working / Done
             let statusBadge = `<span class="badge-status working">Bertugas</span>`;
             if (user.in && user.out) statusBadge = `<span class="badge-status done">Selesai</span>`;
 
-            // Badge Telat
             let lateBadge = `<span class="badge-late on-time">Tepat Waktu</span>`;
             if (user.isLate) lateBadge = `<span class="badge-late late">Terlambat</span>`;
 
-            // --- MASUK (IN) ---
             let inTimeStr = "--:--";
             let inPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
             let inMapsBtn = "";
@@ -826,7 +878,6 @@
                 }
             }
 
-            // --- KELUAR (OUT) ---
             let outTimeStr = "--:--";
             let outPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
             let outMapsBtn = "";
