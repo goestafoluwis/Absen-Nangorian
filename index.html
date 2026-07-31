@@ -130,39 +130,10 @@
             background-color: #fff;
         }
 
-        /* Camera Box */
-        .camera-box {
-            position: relative;
-            width: 100%;
-            height: 220px;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-
-        video, img.preview-img {
+        img.preview-img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-        }
-
-        .btn-retake {
-            position: absolute;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(239, 68, 68, 0.9);
-            color: white;
-            border: none;
-            padding: 6px 16px;
-            font-size: 12px;
-            font-weight: 600;
-            border-radius: 20px;
-            cursor: pointer;
         }
 
         .btn-submit {
@@ -444,15 +415,23 @@
                 </select>
             </div>
 
-            <!-- CONTAINER KAMERA (DISEMBUNYIKAN JIKA DAY OFF / CUTI) -->
+            <!-- CONTAINER FOTO KAMERA LANGSUNG -->
             <div class="form-group" id="cameraSection">
-                <label>Verifikasi Wajah</label>
-                <div class="camera-box">
-                    <video id="webcam" autoplay playsinline></video>
-                    <img id="previewImg" class="preview-img" style="display: none;">
-                    <button type="button" id="btnRetake" class="btn-retake" style="display: none;" onclick="resetCamera()">📷 Foto Ulang</button>
+                <label>Verifikasi Wajah (Foto)</label>
+                <div style="background: #f8fafc; border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; text-align: center;">
+                    <input type="file" id="cameraInput" accept="image/*" capture="user" style="display: none;" onchange="handlePhotoUpload(event)">
+                    
+                    <div id="placeholderFoto" style="cursor: pointer;" onclick="document.getElementById('cameraInput').click()">
+                        <div style="font-size: 32px; margin-bottom: 6px;">📸</div>
+                        <p style="font-size: 13px; font-weight: 600; color: var(--primary);">Ketuk untuk Ambil Foto</p>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Kamera akan terbuka otomatis</p>
+                    </div>
+
+                    <div id="previewContainer" style="display: none;">
+                        <img id="previewImg" class="preview-img" style="width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px;">
+                        <button type="button" class="form-control" style="margin-top: 10px; background: #fee2e2; color: #991b1b; border: none; font-weight: 600; cursor: pointer;" onclick="resetFoto()">🔄 Ambil Ulang Foto</button>
+                    </div>
                 </div>
-                <button type="button" id="btnCapture" class="form-control" style="background:#e0e7ff; color:var(--primary); font-weight:600;" onclick="takeSnapshot()">📸 Ambil Foto</button>
             </div>
 
             <div class="form-group">
@@ -563,10 +542,8 @@
     let currentFotoBase64 = "";
     let userGeoLocation = "";
     let rawMonitoringData = [];
-    let videoStream = null;
 
     window.addEventListener('DOMContentLoaded', () => {
-        initCamera();
         fetchMasterData();
         getGeoLocation();
     });
@@ -598,17 +575,13 @@
         if (tabName === 'absen') {
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
             document.getElementById('tab-absen').classList.add('active');
-            const tipe = document.getElementById('tipeAbsen').value;
-            if (tipe === 'IN' || tipe === 'OUT') initCamera();
         } else if (tabName === 'superior') {
             document.querySelectorAll('.tab-btn')[1].classList.add('active');
             document.getElementById('tab-superior').classList.add('active');
-            stopCamera();
             fetchMonitoringData();
         } else {
             document.querySelectorAll('.tab-btn')[2].classList.add('active');
             document.getElementById('tab-admin').classList.add('active');
-            stopCamera();
         }
     }
 
@@ -618,11 +591,9 @@
 
         if (tipe === 'Day Off' || tipe === 'Cuti') {
             cameraSection.style.display = 'none';
-            stopCamera();
             currentFotoBase64 = "-"; // Tidak perlu foto
         } else {
             cameraSection.style.display = 'block';
-            initCamera();
             currentFotoBase64 = "";
         }
     }
@@ -636,79 +607,54 @@
         }
     }
 
-    async function initCamera() {
-        try {
-            const video = document.getElementById('webcam');
-            if (videoStream) stopCamera();
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-            videoStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
-            });
-            video.srcObject = videoStream;
-        } catch (err) {
-            console.error("Gagal Akses Kamera:", err);
-        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const maxWidth = 500;
+                const scale = maxWidth / img.width;
+                canvas.width = maxWidth;
+                canvas.height = img.height * scale;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('id-ID') + ', ' + now.toLocaleTimeString('id-ID');
+                const locationText = userGeoLocation ? `Lokasi: ${userGeoLocation}` : "Lokasi Tidak Diketahui";
+
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillRect(0, canvas.height - 45, canvas.width, 45);
+
+                ctx.fillStyle = "#fbbf24"; 
+                ctx.font = "bold 11px sans-serif";
+                ctx.fillText(dateStr, 10, canvas.height - 26);
+
+                ctx.fillStyle = "#ffffff"; 
+                ctx.font = "10px sans-serif";
+                ctx.fillText(locationText, 10, canvas.height - 12);
+
+                currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+
+                document.getElementById('previewImg').src = currentFotoBase64;
+                document.getElementById('placeholderFoto').style.display = 'none';
+                document.getElementById('previewContainer').style.display = 'block';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
-    function stopCamera() {
-        if (videoStream) {
-            videoStream.getTracks().forEach(track => track.stop());
-            videoStream = null;
-        }
-    }
-
-    function takeSnapshot() {
-        const video = document.getElementById('webcam');
-        const previewImg = document.getElementById('previewImg');
-        const btnRetake = document.getElementById('btnRetake');
-        const btnCapture = document.getElementById('btnCapture');
-
-        if (!video.srcObject) return;
-
-        const canvas = document.createElement('canvas');
-        const maxWidth = 500;
-        const scale = maxWidth / (video.videoWidth || 640);
-        canvas.width = maxWidth;
-        canvas.height = (video.videoHeight || 480) * scale;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('id-ID') + ', ' + now.toLocaleTimeString('id-ID');
-        const locationText = userGeoLocation ? `Lokasi: ${userGeoLocation}` : "Lokasi Tidak Diketahui";
-
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-        ctx.fillRect(0, canvas.height - 45, canvas.width, 45);
-
-        ctx.fillStyle = "#fbbf24"; 
-        ctx.font = "bold 11px sans-serif";
-        ctx.fillText(dateStr, 10, canvas.height - 26);
-
-        ctx.fillStyle = "#ffffff"; 
-        ctx.font = "10px sans-serif";
-        ctx.fillText(locationText, 10, canvas.height - 12);
-
-        currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
-
-        previewImg.src = currentFotoBase64;
-        previewImg.style.display = 'block';
-        video.style.display = 'none';
-        btnRetake.style.display = 'block';
-        btnCapture.style.display = 'none';
-    }
-
-    function resetCamera() {
-        const video = document.getElementById('webcam');
-        const previewImg = document.getElementById('previewImg');
-        const btnRetake = document.getElementById('btnRetake');
-        const btnCapture = document.getElementById('btnCapture');
-
+    function resetFoto() {
         currentFotoBase64 = "";
-        previewImg.style.display = 'none';
-        video.style.display = 'block';
-        btnRetake.style.display = 'none';
-        btnCapture.style.display = 'block';
+        document.getElementById('cameraInput').value = "";
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('placeholderFoto').style.display = 'block';
     }
 
     async function fetchMasterData() {
@@ -826,7 +772,6 @@
 
     function renderMonitoringList() {
         const selectedToko = document.getElementById('filterToko').value;
-        const selectedStatus = document.getElementById('filterStatus').value;
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
 
