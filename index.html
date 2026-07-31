@@ -9,8 +9,9 @@
         input, select, button, textarea { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
         textarea { resize: vertical; font-family: Arial, sans-serif; }
         button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
         #video { width: 100%; max-width: 400px; border-radius: 8px; transform: scaleX(-1); }
-        #status { font-weight: bold; color: blue; margin-top: 10px; }
+        #status { font-weight: bold; color: blue; margin-top: 10px; word-wrap: break-word; }
     </style>
 </head>
 <body>
@@ -26,11 +27,9 @@
         <option value="Malam">Malam</option>
     </select>
 
+    <!-- Dropdown Toko yang diisi otomatis dari Google Sheets -->
     <select id="toko">
-        <option value="">-- Pilih Lokasi Toko --</option>
-        <option value="Toko Kedaton">Toko Kedaton</option>
-        <option value="Toko Sudirman">Toko Sudirman</option>
-        <option value="Toko Ahmad Yani">Toko Ahmad Yani</option>
+        <option value="">-- Memuat Daftar Toko... --</option>
     </select>
 
     <!-- Kolom Keterangan Tambahan (Perbantuan/Jam Pendek) -->
@@ -44,11 +43,37 @@
     <div id="status"></div>
 
     <script>
-        // MASUKKAN URL WEB APP DARI GOOGLE APPS SCRIPT ANDA DI BAWAH INI
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyRYWAB4MqM3kImdoWRahIe2-SlmlZcy2P9aGobRcmzy_EIEM-hD0-EvSvK0smdaJCtXQ/exec";
+        // URL WEB APP TERBARU
+        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbxMNUvOx4bK986Tg60h-toFNdDYRj7vYOTpHluyOGXcyJsnzZKyIwJq34ZKHldlEJdlGw/exec";
 
         const video = document.getElementById('video');
         const statusDiv = document.getElementById('status');
+        const selectToko = document.getElementById('toko');
+
+        // Memuat Daftar Toko dari Google Sheets saat Halaman Dibuka
+        document.addEventListener('DOMContentLoaded', muatDaftarToko);
+
+        function muatDaftarToko() {
+            fetch(URL_GOOGLE_SCRIPT)
+                .then(res => res.json())
+                .then(respons => {
+                    if (respons.status === "success") {
+                        selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
+                        respons.data.forEach(toko => {
+                            const option = document.createElement('option');
+                            option.value = toko.nama; // Mengirimkan Full Name Store
+                            option.textContent = toko.nama;
+                            selectToko.appendChild(option);
+                        });
+                    } else {
+                        selectToko.innerHTML = '<option value="">-- Gagal Memuat Toko --</option>';
+                    }
+                })
+                .catch(err => {
+                    console.error("Gagal mengambil data toko:", err);
+                    selectToko.innerHTML = '<option value="">-- Gagal Memuat Toko --</option>';
+                });
+        }
 
         // Membuka kamera depan HP karyawan secara otomatis saat memuat situs
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -135,16 +160,16 @@
             .then(res => res.json())
             .then(respons => {
                 if(respons.status === "success") {
-                    statusDiv.innerHTML = "<span style='color:green;'>Absen Berhasil Dicatat! Terima Kasih.</span>";
+                    statusDiv.innerHTML = "<span style='color:green; font-weight:bold;'>Absen Berhasil Dicatat! Terima Kasih.</span>";
                     document.getElementById('nama').value = "";
                     document.getElementById('keterangan').value = "";
                 } else {
-                    statusDiv.innerHTML = "<span style='color:red;'>Gagal: " + respons.message + "</span>";
+                    statusDiv.innerHTML = "<span style='color:red; font-weight:bold;'>Gagal: " + respons.message + "</span>";
                 }
                 document.getElementById('btnAbsen').disabled = false;
             })
             .catch(err => {
-                statusDiv.innerHTML = "<span style='color:red;'>Terjadi kesalahan jaringan!</span>";
+                statusDiv.innerHTML = "<span style='color:red; font-weight:bold;'>Terjadi kesalahan jaringan!</span>";
                 document.getElementById('btnAbsen').disabled = false;
             });
         }
