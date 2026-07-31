@@ -637,92 +637,95 @@
     }
 
     function renderMonitoringList() {
-        const selectedToko = document.getElementById('filterToko').value;
-        const listDiv = document.getElementById('monitoringList');
-        listDiv.innerHTML = '';
+    const selectedToko = document.getElementById('filterToko').value;
+    const listDiv = document.getElementById('monitoringList');
+    listDiv.innerHTML = '';
 
-        const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
+    const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
 
-        if (filtered.length === 0) {
-            document.getElementById('stat-total').innerText = '0';
-            document.getElementById('stat-toko').innerText = '0';
-            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
-            return;
+    if (filtered.length === 0) {
+        document.getElementById('stat-total').innerText = '0';
+        document.getElementById('stat-toko').innerText = '0';
+        listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
+        return;
+    }
+
+    const groupedUser = {};
+    filtered.forEach(item => {
+        if (!groupedUser[item.nik]) {
+            groupedUser[item.nik] = {
+                nik: item.nik,
+                nama: item.nama,
+                toko: item.toko,
+                shift: item.shift,
+                in: null,
+                out: null
+            };
+        }
+        if (String(item.tipe).toUpperCase() === 'IN') groupedUser[item.nik].in = item;
+        if (String(item.tipe).toUpperCase() === 'OUT') groupedUser[item.nik].out = item;
+    });
+
+    const userList = Object.values(groupedUser);
+    document.getElementById('stat-total').innerText = userList.length;
+    const tokoUnik = new Set(userList.map(item => item.toko));
+    document.getElementById('stat-toko').innerText = tokoUnik.size;
+
+    userList.forEach(user => {
+        const el = document.createElement('div');
+        el.className = 'user-card';
+
+        // --- MASUK (IN) ---
+        let inTimeStr = "--:--";
+        let inPhotoHtml = '<div class="thumb-empty">Tanpa Foto</div>';
+        
+        if (user.in) {
+            const dIn = new Date(user.in.timestamp);
+            inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
+            
+            // Validasi longgar: Cukup cek apakah ada string foto dan bukan "-"
+            if (user.in.foto && String(user.in.foto).trim() !== "" && user.in.foto !== "-") {
+                inPhotoHtml = `<img src="${user.in.foto}" alt="Foto IN" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.in.foto}', '${user.nama} (IN)')" onerror="this.outerHTML='<div class=\\'thumb-empty\\'>Foto Rusak</div>'">`;
+            }
         }
 
-        const groupedUser = {};
-        filtered.forEach(item => {
-            if (!groupedUser[item.nik]) {
-                groupedUser[item.nik] = {
-                    nik: item.nik,
-                    nama: item.nama,
-                    toko: item.toko,
-                    shift: item.shift,
-                    in: null,
-                    out: null
-                };
+        // --- KELUAR (OUT) ---
+        let outTimeStr = "--:--";
+        let outPhotoHtml = '<div class="thumb-empty">Tanpa Foto</div>';
+
+        if (user.out) {
+            const dOut = new Date(user.out.timestamp);
+            outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
+
+            if (user.out.foto && String(user.out.foto).trim() !== "" && user.out.foto !== "-") {
+                outPhotoHtml = `<img src="${user.out.foto}" alt="Foto OUT" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.out.foto}', '${user.nama} (OUT)')" onerror="this.outerHTML='<div class=\\'thumb-empty\\'>Foto Rusak</div>'">`;
             }
-            if (String(item.tipe).toUpperCase() === 'IN') groupedUser[item.nik].in = item;
-            if (String(item.tipe).toUpperCase() === 'OUT') groupedUser[item.nik].out = item;
-        });
+        }
 
-        const userList = Object.values(groupedUser);
-        document.getElementById('stat-total').innerText = userList.length;
-        const tokoUnik = new Set(userList.map(item => item.toko));
-        document.getElementById('stat-toko').innerText = tokoUnik.size;
-
-        userList.forEach(user => {
-            const el = document.createElement('div');
-            el.className = 'user-card';
-
-            let inTimeStr = "--:--";
-            let inPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
-            
-            if (user.in) {
-                const dIn = new Date(user.in.timestamp);
-                inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
-                
-                if (user.in.foto && user.in.foto.length > 20) {
-                    inPhotoHtml = `<img src="${user.in.foto}" alt="IN" onclick="viewLargePhoto('${user.in.foto}', '${user.nama} (IN)')">`;
-                }
-            }
-
-            let outTimeStr = "--:--";
-            let outPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
-
-            if (user.out) {
-                const dOut = new Date(user.out.timestamp);
-                outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
-
-                if (user.out.foto && user.out.foto.length > 20) {
-                    outPhotoHtml = `<img src="${user.out.foto}" alt="OUT" onclick="viewLargePhoto('${user.out.foto}', '${user.nama} (OUT)')">`;
-                }
-            }
-
-            el.innerHTML = `
-                <div class="user-card-header">
-                    <div>
-                        <h5>${user.nama}</h5>
-                        <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
-                    </div>
-                    <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
+        el.innerHTML = `
+            <div class="user-card-header">
+                <div>
+                    <h5>${user.nama}</h5>
+                    <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
                 </div>
-                <div class="io-grid">
-                    <div class="io-box">
-                        <span class="io-title in">MASUK (IN)</span>
-                        <div class="thumb-box">${inPhotoHtml}</div>
-                        <div class="io-time">${inTimeStr}</div>
-                    </div>
-                    <div class="io-box">
-                        <span class="io-title out">KELUAR (OUT)</span>
-                        <div class="thumb-box">${outPhotoHtml}</div>
-                        <div class="io-time">${outTimeStr}</div>
-                    </div>
+                <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
+            </div>
+            <div class="io-grid">
+                <div class="io-box">
+                    <span class="io-title in">MASUK (IN)</span>
+                    <div class="thumb-box">${inPhotoHtml}</div>
+                    <div class="io-time">${inTimeStr}</div>
                 </div>
-            `;
-            listDiv.appendChild(el);
-        });
-    }
+                <div class="io-box">
+                    <span class="io-title out">KELUAR (OUT)</span>
+                    <div class="thumb-box">${outPhotoHtml}</div>
+                    <div class="io-time">${outTimeStr}</div>
+                </div>
+            </div>
+        `;
+        listDiv.appendChild(el);
+    });
+}
 
     function viewLargePhoto(src, title) {
         document.getElementById('largePhoto').src = src;
