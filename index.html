@@ -1,439 +1,98 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absen Team Nangorian</title>
-    <!-- Google Fonts untuk Tipografi Modern -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = e.parameter.action;
 
-    <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg-body: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-            --success: #10b981;
-            --error: #ef4444;
-        }
+    // Handler Khusus Data Monitoring Real-Time untuk Superior & Admin
+    if (action === "getMonitoring") {
+      var sheetAbsensi = ss.getSheetByName("Sheet1") || ss.getSheets()[0];
+      var dataAbsensi = sheetAbsensi.getDataRange().getValues();
+      var sheetKaryawan = ss.getSheetByName("Data_Karyawan");
+      var dataKaryawan = sheetKaryawan ? sheetKaryawan.getDataRange().getValues() : [];
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+      var zonaWaktu = "Asia/Jakarta";
+      var hariIniStr = Utilities.formatDate(new Date(), zonaWaktu, "yyyy-MM-dd");
 
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 16px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 440px;
-            background: var(--card-bg);
-            border-radius: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-            padding: 24px;
-            border: 1px solid var(--border-color);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        .header h2 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text-main);
-            letter-spacing: -0.5px;
-        }
-
-        .header p {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-            text-align: left;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-
-        input[type="number"],
-        input[type="text"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 14px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            background-color: #f8fafc;
-            color: var(--text-main);
-            transition: all 0.2s ease;
-            outline: none;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            background-color: #ffffff;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-        }
-
-        .nama-preview {
-            background-color: #f1f5f9 !important;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .nama-preview.success {
-            color: var(--success);
-            border-color: var(--success);
-            background-color: #f0fdf4 !important;
-        }
-
-        .nama-preview.error {
-            color: var(--error);
-            border-color: var(--error);
-            background-color: #fef2f2 !important;
-        }
-
-        .camera-card {
-            background: #0f172a;
-            border-radius: 14px;
-            overflow: hidden;
-            position: relative;
-            margin: 20px 0;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-
-        #video {
-            width: 100%;
-            height: 240px;
-            object-fit: cover;
-            display: block;
-            transform: scaleX(-1);
-        }
-
-        .camera-overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
-            padding: 4px 10px;
-            border-radius: 20px;
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .dot-live {
-            width: 8px;
-            height: 8px;
-            background-color: #ef4444;
-            border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
-        button:disabled {
-            background-color: #94a3b8;
-            box-shadow: none;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        #status {
-            margin-top: 16px;
-            font-size: 13px;
-            font-weight: 600;
-            text-align: center;
-            min-height: 20px;
-            line-height: 1.4;
-        }
-
-        .status-success { color: var(--success); }
-        .status-error { color: var(--error); }
-        .status-info { color: var(--primary); }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <div class="header">
-            <h2>Absen Team Nangorian</h2>
-            <p>Sistem Kehadiran Digital & Verifikasi Lokasi</p>
-        </div>
-
-        <!-- Input NIK -->
-        <div class="form-group">
-            <label for="nik">NIK Karyawan</label>
-            <input type="number" id="nik" placeholder="Contoh: 32208018" oninput="cekNik()" required>
-        </div>
-
-        <!-- Nama Otomatis Terisi -->
-        <div class="form-group">
-            <label for="nama">Nama Lengkap</label>
-            <input type="text" id="nama" class="nama-preview" placeholder="Otomatis terisi..." readonly>
-        </div>
-
-        <!-- Tipe Absen & Shift Dalam 1 Baris -->
-        <div style="display: flex; gap: 12px;">
-            <div class="form-group" style="flex: 1;">
-                <label for="tipeAbsen">Tipe Absen</label>
-                <select id="tipeAbsen">
-                    <option value="">-- Pilih --</option>
-                    <option value="IN">Masuk (IN)</option>
-                    <option value="OUT">Keluar (OUT)</option>
-                </select>
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label for="shift">Shift Work</label>
-                <select id="shift">
-                    <option value="">-- Pilih --</option>
-                    <option value="Pagi">Pagi</option>
-                    <option value="Siang">Siang</option>
-                    <option value="Middle">Middle</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Pilihan Toko -->
-        <div class="form-group">
-            <label for="toko">Lokasi Toko</label>
-            <select id="toko">
-                <option value="">-- Memuat Daftar Toko... --</option>
-            </select>
-        </div>
-
-        <!-- Keterangan -->
-        <div class="form-group">
-            <label for="keterangan">Keterangan (Opsional)</label>
-            <textarea id="keterangan" rows="2" placeholder="Catatan perbantuan, jam pendek, dll..."></textarea>
-        </div>
-
-        <!-- Pratinjau Kamera -->
-        <div class="camera-card">
-            <div class="camera-overlay">
-                <span class="dot-live"></span> KAMERA AKTIF
-            </div>
-            <video id="video" autoplay playsinline></video>
-        </div>
-        <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-
-        <!-- Tombol Kirim -->
-        <button type="button" id="btnAbsen" onclick="prosesAbsensi()">KIRIM ABSENSI</button>
-        <div id="status"></div>
-    </div>
-
-    <script>
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbzcHxPVm8Z8HiO2wuYZbbFg1ZGq-bp1OvuU3oG3WEQsmFvvjyOkGoZCvSVqQLfs-sclpA/exec";
-
-        const video = document.getElementById('video');
-        const statusDiv = document.getElementById('status');
-        const selectToko = document.getElementById('toko');
-        const inputNama = document.getElementById('nama');
+      var listAbsenHariIni = [];
+      for (var i = 1; i < dataAbsensi.length; i++) {
+        var row = dataAbsensi[i];
+        var timestampRaw = row[0];
+        var tglStr = "";
         
-        let dataKaryawanMap = {}; 
-
-        document.addEventListener('DOMContentLoaded', muatDataAwal);
-
-        function muatDataAwal() {
-            fetch(URL_GOOGLE_SCRIPT)
-                .then(res => res.json())
-                .then(respons => {
-                    if (respons.status === "success") {
-                        selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
-                        respons.toko.forEach(toko => {
-                            const option = document.createElement('option');
-                            option.value = toko.kode;
-                            option.textContent = toko.kode;
-                            selectToko.appendChild(option);
-                        });
-
-                        dataKaryawanMap = respons.karyawan || {};
-                    } else {
-                        selectToko.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
-                    }
-                })
-                .catch(err => {
-                    console.error("Gagal mengambil data awal:", err);
-                    selectToko.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
-                });
+        if (timestampRaw instanceof Date) {
+          tglStr = Utilities.formatDate(timestampRaw, zonaWaktu, "yyyy-MM-dd");
+        } else if (typeof timestampRaw === "string") {
+          tglStr = timestampRaw.split(" ")[0];
         }
 
-        function cekNik() {
-            const nikInput = document.getElementById('nik').value.trim();
-            inputNama.classList.remove('success', 'error');
-
-            if (dataKaryawanMap[nikInput]) {
-                inputNama.value = dataKaryawanMap[nikInput];
-                inputNama.classList.add('success');
-            } else if (nikInput.length > 0) {
-                inputNama.value = "NIK tidak ditemukan!";
-                inputNama.classList.add('error');
-            } else {
-                inputNama.value = "";
-            }
+        if (tglStr === hariIniStr) {
+          listAbsenHariIni.push({
+            timestamp: row[0],
+            nik: String(row[1]),
+            nama: row[2],
+            tipe: row[3],
+            shift: row[4],
+            toko: row[5],
+            foto: row[6],
+            gps: row[7],
+            keterangan: row[8]
+          });
         }
+      }
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-            .then(stream => { video.srcObject = stream; })
-            .catch(err => { alert("Gagal akses kamera. Pastikan izin kamera aktif!"); });
-
-        function prosesAbsensi() {
-            const nik = document.getElementById('nik').value.trim();
-            const nama = inputNama.value;
-            const tipeAbsen = document.getElementById('tipeAbsen').value;
-            const shift = document.getElementById('shift').value;
-            const toko = document.getElementById('toko').value;
-            const keterangan = document.getElementById('keterangan').value;
-
-            if (!nik || !dataKaryawanMap[nik]) {
-                alert("Masukkan NIK terdaftar yang valid!");
-                return;
-            }
-
-            if (!tipeAbsen || !shift || !toko) {
-                alert("Kolom Tipe Absen, Shift, dan Toko wajib diisi!");
-                return;
-            }
-
-            statusDiv.className = "status-info";
-            statusDiv.innerText = "Mengambil koordinat lokasi (GPS)...";
-            document.getElementById('btnAbsen').disabled = true;
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude.toFixed(5);
-                        const lon = position.coords.longitude.toFixed(5);
-                        const koordinat = `${lat}, ${lon}`;
-                        
-                        cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan);
-                    },
-                    (error) => {
-                        alert("Gagal mengambil GPS. Izin lokasi wajib diaktifkan!");
-                        document.getElementById('btnAbsen').disabled = false;
-                        statusDiv.innerText = "";
-                    },
-                    { enableHighAccuracy: true }
-                );
-            } else {
-                alert("Browser tidak mendukung sistem GPS.");
-                document.getElementById('btnAbsen').disabled = false;
-            }
+      var masterKaryawan = [];
+      for (var j = 1; j < dataKaryawan.length; j++) {
+        var n = String(dataKaryawan[j][0]).trim();
+        var nm = String(dataKaryawan[j][1]).trim();
+        if (n && nm) {
+          masterKaryawan.push({ nik: n, nama: nm });
         }
+      }
 
-        function cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan) {
-            statusDiv.innerText = "Memproses foto & watermark...";
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            ctx.translate(640, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0, 640, 480);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        tanggal: hariIniStr,
+        absenToday: listAbsenHariIni,
+        totalKaryawan: masterKaryawan
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
-            const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-            const teksWatermark = `${waktu} | ${nik} - ${nama} | ${tipeAbsen}`;
-
-            ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-            ctx.fillRect(0, 420, 640, 60);
-
-            ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
-            ctx.fillStyle = "#facc15";
-            ctx.fillText(teksWatermark, 16, 455);
-
-            const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
-            statusDiv.innerText = "Mengirim data ke database...";
-
-            fetch(URL_GOOGLE_SCRIPT, {
-                method: "POST",
-                body: JSON.stringify({
-                    nik: nik,
-                    nama: nama,
-                    tipeAbsen: tipeAbsen,
-                    shift: shift,
-                    toko: toko,
-                    lokasi: koordinat,
-                    keterangan: keterangan,
-                    foto: fotoBase64
-                })
-            })
-            .then(res => res.json())
-            .then(respons => {
-                if(respons.status === "success") {
-                    statusDiv.className = "status-success";
-                    statusDiv.innerHTML = "✓ Absen " + tipeAbsen + " Berhasil! Terima kasih, " + nama + ".";
-                    document.getElementById('nik').value = "";
-                    inputNama.value = "";
-                    inputNama.classList.remove('success');
-                    document.getElementById('keterangan').value = "";
-                } else {
-                    statusDiv.className = "status-error";
-                    statusDiv.innerHTML = "✕ Gagal: " + respons.message;
-                }
-                document.getElementById('btnAbsen').disabled = false;
-            })
-            .catch(err => {
-                statusDiv.className = "status-error";
-                statusDiv.innerHTML = "✕ Terjadi kesalahan jaringan!";
-                document.getElementById('btnAbsen').disabled = false;
-            });
+    // Default Load Data Toko & Master Karyawan
+    var sheetToko = ss.getSheetByName("Daftar_Toko");
+    var daftarToko = [];
+    if (sheetToko) {
+      var dataToko = sheetToko.getDataRange().getValues();
+      for (var k = 1; k < dataToko.length; k++) {
+        var kodeToko = String(dataToko[k][0]).trim();
+        var lat = parseFloat(dataToko[k][2]);
+        var lng = parseFloat(dataToko[k][3]);
+        if (kodeToko && !isNaN(lat) && !isNaN(lng)) {
+          daftarToko.push({ kode: kodeToko, latitude: lat, longitude: lng });
         }
-    </script>
-</body>
-</html>
+      }
+    }
+
+    var sheetKaryawanInit = ss.getSheetByName("Data_Karyawan");
+    var daftarKaryawan = {};
+    if (sheetKaryawanInit) {
+      var dK = sheetKaryawanInit.getDataRange().getValues();
+      for (var m = 1; m < dK.length; m++) {
+        var nikStr = String(dK[m][0]).trim();
+        var namaStr = String(dK[m][1]).trim();
+        if (nikStr && namaStr) {
+          daftarKaryawan[nikStr] = namaStr;
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      toko: daftarToko,
+      karyawan: daftarKaryawan
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+}
