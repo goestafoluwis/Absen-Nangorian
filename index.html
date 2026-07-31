@@ -285,6 +285,7 @@
 
         .badge-status.working { background: #fef3c7; color: #92400e; }
         .badge-status.done { background: #dbeafe; color: #1e40af; }
+        .badge-status.off { background: #f3f4f6; color: #4b5563; }
 
         .badge-late {
             font-size: 10px;
@@ -419,18 +420,20 @@
 
             <div class="form-group">
                 <label>Tipe Absen</label>
-                <select id="tipeAbsen" class="form-control" required>
+                <select id="tipeAbsen" class="form-control" onchange="handleTipeAbsenChange()" required>
                     <option value="IN">Masuk (IN)</option>
                     <option value="OUT">Keluar (OUT)</option>
+                    <option value="Day Off">Day Off (Libur)</option>
+                    <option value="Cuti">Cuti</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label>Shift Kerja</label>
                 <select id="shiftInput" class="form-control" required>
-                    <option value="Pagi">Pagi (09:00)</option>
+                    <option value="Pagi">Pagi (Max 09:00)</option>
                     <option value="Middle">Middle (11:00)</option>
-                    <option value="Siang">Siang (14:00)</option>
+                    <option value="Siang">Siang (Max 14:00)</option>
                 </select>
             </div>
 
@@ -441,7 +444,8 @@
                 </select>
             </div>
 
-            <div class="form-group">
+            <!-- CONTAINER KAMERA (DISEMBUNYIKAN JIKA DAY OFF / CUTI) -->
+            <div class="form-group" id="cameraSection">
                 <label>Verifikasi Wajah</label>
                 <div class="camera-box">
                     <video id="webcam" autoplay playsinline></video>
@@ -547,10 +551,11 @@
     let isSuperiorAuthenticated = false;
     let isAdminAuthenticated = false;
 
+    // BATAS MAKSIMAL KETERLAMBATAN SHIFT
     const SHIFT_LIMIT = {
-        "Pagi": "08:15",
+        "Pagi": "09:00",
         "Middle": "11:15",
-        "Siang": "13:15"
+        "Siang": "14:00"
     };
 
     let karyawanMap = {};
@@ -567,7 +572,6 @@
     });
 
     function switchTab(tabName) {
-        // PERIKSA SANDI / PIN SEBELUM MASUK TAB
         if (tabName === 'superior' && !isSuperiorAuthenticated) {
             const pass = prompt("🔐 Masukkan PIN Superior:");
             if (pass === PIN_SUPERIOR) {
@@ -594,7 +598,8 @@
         if (tabName === 'absen') {
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
             document.getElementById('tab-absen').classList.add('active');
-            initCamera();
+            const tipe = document.getElementById('tipeAbsen').value;
+            if (tipe === 'IN' || tipe === 'OUT') initCamera();
         } else if (tabName === 'superior') {
             document.querySelectorAll('.tab-btn')[1].classList.add('active');
             document.getElementById('tab-superior').classList.add('active');
@@ -604,6 +609,21 @@
             document.querySelectorAll('.tab-btn')[2].classList.add('active');
             document.getElementById('tab-admin').classList.add('active');
             stopCamera();
+        }
+    }
+
+    function handleTipeAbsenChange() {
+        const tipe = document.getElementById('tipeAbsen').value;
+        const cameraSection = document.getElementById('cameraSection');
+
+        if (tipe === 'Day Off' || tipe === 'Cuti') {
+            cameraSection.style.display = 'none';
+            stopCamera();
+            currentFotoBase64 = "-"; // Tidak perlu foto
+        } else {
+            cameraSection.style.display = 'block';
+            initCamera();
+            currentFotoBase64 = "";
         }
     }
 
@@ -654,23 +674,20 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // --- TAMBAHKAN WATERMARK DI CANVAS ---
         const now = new Date();
         const dateStr = now.toLocaleDateString('id-ID') + ', ' + now.toLocaleTimeString('id-ID');
-        // Menggunakan lokasi GPS atau teks default jika belum akurat
         const locationText = userGeoLocation ? `Lokasi: ${userGeoLocation}` : "Lokasi Tidak Diketahui";
 
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(0, canvas.height - 45, canvas.width, 45);
 
-        ctx.fillStyle = "#fbbf24"; // Warna kuning emas untuk tanggal
+        ctx.fillStyle = "#fbbf24"; 
         ctx.font = "bold 11px sans-serif";
         ctx.fillText(dateStr, 10, canvas.height - 26);
 
-        ctx.fillStyle = "#ffffff"; // Warna putih untuk teks lokasi maps
+        ctx.fillStyle = "#ffffff"; 
         ctx.font = "10px sans-serif";
         ctx.fillText(locationText, 10, canvas.height - 12);
-        // -------------------------------------
 
         currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
@@ -703,7 +720,6 @@
                 karyawanMap = data.karyawan || {};
                 tokoList = data.toko || [];
 
-                // Update info di Panel Admin
                 document.getElementById('admin-count-karyawan').innerText = Object.keys(karyawanMap).length;
                 document.getElementById('admin-count-toko').innerText = tokoList.length;
 
@@ -734,8 +750,9 @@
 
         const msgBox = document.getElementById('msgBox');
         const btnSubmit = document.getElementById('btnSubmit');
+        const tipeAbsen = document.getElementById('tipeAbsen').value;
 
-        if (!currentFotoBase64) {
+        if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
             showMsg("Silakan ambil foto verifikasi terlebih dahulu!", "error");
             return;
         }
@@ -743,10 +760,10 @@
         const payload = {
             nik: document.getElementById('nikInput').value.trim(),
             nama: document.getElementById('namaInput').value.trim(),
-            tipeAbsen: document.getElementById('tipeAbsen').value,
+            tipeAbsen: tipeAbsen,
             shift: document.getElementById('shiftInput').value,
             toko: document.getElementById('tokoInput').value,
-            foto: currentFotoBase64,
+            foto: currentFotoBase64 || "-",
             lokasi: userGeoLocation || "Online Web",
             keterangan: document.getElementById('keteranganInput').value.trim()
         };
@@ -831,10 +848,15 @@
                     shift: item.shift,
                     in: null,
                     out: null,
+                    statusSpecial: null,
                     isLate: false
                 };
             }
-            if (String(item.tipe).toUpperCase() === 'IN') {
+            const tipeUp = String(item.tipe).toUpperCase();
+            if (tipeUp === 'DAY OFF' || tipeUp === 'CUTI') {
+                groupedUser[item.nik].statusSpecial = item.tipe;
+            }
+            if (tipeUp === 'IN') {
                 groupedUser[item.nik].in = item;
                 const dIn = new Date(item.timestamp);
                 if (!isNaN(dIn)) {
@@ -843,7 +865,7 @@
                     if (timeStr > limit) groupedUser[item.nik].isLate = true;
                 }
             }
-            if (String(item.tipe).toUpperCase() === 'OUT') groupedUser[item.nik].out = item;
+            if (tipeUp === 'OUT') groupedUser[item.nik].out = item;
         });
 
         let userList = Object.values(groupedUser);
@@ -860,82 +882,90 @@
 
         updateStats(userList.length, countWorking, countDone, countLate);
 
-        if (selectedStatus === 'WORKING') userList = userList.filter(u => u.in && !u.out);
-        if (selectedStatus === 'DONE') userList = userList.filter(u => u.in && u.out);
-        if (selectedStatus === 'LATE') userList = userList.filter(u => u.isLate);
-
-        if (userList.length === 0) {
-            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada data sesuai filter.</p>';
-            return;
-        }
-
         userList.forEach(user => {
             const el = document.createElement('div');
             el.className = 'user-card';
 
             let statusBadge = `<span class="badge-status working">Bertugas</span>`;
-            if (user.in && user.out) statusBadge = `<span class="badge-status done">Selesai</span>`;
+            if (user.statusSpecial) {
+                statusBadge = `<span class="badge-status off">${user.statusSpecial}</span>`;
+            } else if (user.in && user.out) {
+                statusBadge = `<span class="badge-status done">Selesai</span>`;
+            }
 
             let lateBadge = `<span class="badge-late on-time">Tepat Waktu</span>`;
             if (user.isLate) lateBadge = `<span class="badge-late late">Terlambat</span>`;
 
-            let inTimeStr = "--:--";
-            let inPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
-            let inMapsBtn = "";
+            if (user.statusSpecial) {
+                el.innerHTML = `
+                    <div class="user-card-header">
+                        <div class="user-info">
+                            <h5>${user.nama} ${statusBadge}</h5>
+                            <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
+                        </div>
+                        <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
+                    </div>
+                    <p style="text-align: center; font-size: 12px; color: var(--text-muted); padding: 10px;">Karyawan sedang dalam status ${user.statusSpecial}.</p>
+                `;
+            } else {
+                let inTimeStr = "--:--";
+                let inPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
+                let inMapsBtn = "";
 
-            if (user.in) {
-                const dIn = new Date(user.in.timestamp);
-                inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
+                if (user.in) {
+                    const dIn = new Date(user.in.timestamp);
+                    inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
 
-                if (user.in.foto && String(user.in.foto).trim() !== "" && user.in.foto !== "-") {
-                    inPhotoHtml = `<img src="${user.in.foto}" alt="Foto IN" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.in.foto}')" onerror="this.outerHTML='<div class=\\'thumb-box\\'>Foto Rusak</div>'">`;
+                    if (user.in.foto && String(user.in.foto).trim() !== "" && user.in.foto !== "-") {
+                        inPhotoHtml = `<img src="${user.in.foto}" alt="Foto IN" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.in.foto}')" onerror="this.outerHTML='<div class=\\'thumb-box\\'>Foto Rusak</div>'">`;
+                    }
+
+                    if (user.in.lokasi && user.in.lokasi.includes(',')) {
+                        inMapsBtn = `<a href="https://maps.google.com/?q=${user.in.lokasi}" target="_blank" class="maps-link">📌 Lokasi Maps</a>`;
+                    }
                 }
 
-                if (user.in.lokasi && user.in.lokasi.includes(',')) {
-                    inMapsBtn = `<a href="https://maps.google.com/?q=${user.in.lokasi}" target="_blank" class="maps-link">📌 Lokasi Maps</a>`;
+                let outTimeStr = "--:--";
+                let outPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
+                let outMapsBtn = "";
+
+                if (user.out) {
+                    const dOut = new Date(user.out.timestamp);
+                    outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
+
+                    if (user.out.foto && String(user.out.foto).trim() !== "" && user.out.foto !== "-") {
+                        outPhotoHtml = `<img src="${user.out.foto}" alt="Foto OUT" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.out.foto}')" onerror="this.outerHTML='<div class=\\'thumb-box\\'>Foto Rusak</div>'">`;
+                    }
+
+                    if (user.out.lokasi && user.out.lokasi.includes(',')) {
+                        outMapsBtn = `<a href="https://maps.google.com/?q=${user.out.lokasi}" target="_blank" class="maps-link">📌 Lokasi Maps</a>`;
+                    }
                 }
+
+                el.innerHTML = `
+                    <div class="user-card-header">
+                        <div class="user-info">
+                            <h5>${user.nama} ${statusBadge}</h5>
+                            <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong> | ${lateBadge}</span>
+                        </div>
+                        <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
+                    </div>
+                    <div class="io-grid">
+                        <div class="io-box">
+                            <span class="io-title in">MASUK (IN)</span>
+                            <div class="thumb-box">${inPhotoHtml}</div>
+                            <div class="io-time">${inTimeStr}</div>
+                            ${inMapsBtn}
+                        </div>
+                        <div class="io-box">
+                            <span class="io-title out">KELUAR (OUT)</span>
+                            <div class="thumb-box">${outPhotoHtml}</div>
+                            <div class="io-time">${outTimeStr}</div>
+                            ${outMapsBtn}
+                        </div>
+                    </div>
+                `;
             }
-
-            let outTimeStr = "--:--";
-            let outPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
-            let outMapsBtn = "";
-
-            if (user.out) {
-                const dOut = new Date(user.out.timestamp);
-                outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
-
-                if (user.out.foto && String(user.out.foto).trim() !== "" && user.out.foto !== "-") {
-                    outPhotoHtml = `<img src="${user.out.foto}" alt="Foto OUT" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.out.foto}')" onerror="this.outerHTML='<div class=\\'thumb-box\\'>Foto Rusak</div>'">`;
-                }
-
-                if (user.out.lokasi && user.out.lokasi.includes(',')) {
-                    outMapsBtn = `<a href="https://maps.google.com/?q=${user.out.lokasi}" target="_blank" class="maps-link">📌 Lokasi Maps</a>`;
-                }
-            }
-
-            el.innerHTML = `
-                <div class="user-card-header">
-                    <div class="user-info">
-                        <h5>${user.nama} ${statusBadge}</h5>
-                        <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong> | ${lateBadge}</span>
-                    </div>
-                    <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
-                </div>
-                <div class="io-grid">
-                    <div class="io-box">
-                        <span class="io-title in">MASUK (IN)</span>
-                        <div class="thumb-box">${inPhotoHtml}</div>
-                        <div class="io-time">${inTimeStr}</div>
-                        ${inMapsBtn}
-                    </div>
-                    <div class="io-box">
-                        <span class="io-title out">KELUAR (OUT)</span>
-                        <div class="thumb-box">${outPhotoHtml}</div>
-                        <div class="io-time">${outTimeStr}</div>
-                        ${outMapsBtn}
-                    </div>
-                </div>
-            `;
             listDiv.appendChild(el);
         });
     }
