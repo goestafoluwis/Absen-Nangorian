@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absensi Kehadiran UPT</title>
+    <title>Absen Team Nangorian</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: auto; text-align: center; }
         input, select, button, textarea { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
@@ -16,23 +16,30 @@
 </head>
 <body>
 
-    <h2>Form Absen UPT</h2>
+    <h2>Absen Team Nangorian</h2>
     
     <input type="text" id="nama" placeholder="Masukkan Nama Lengkap" required>
+
+    <!-- Pilihan Absen Masuk / Keluar -->
+    <select id="tipeAbsen">
+        <option value="">-- Pilih Tipe Absen --</option>
+        <option value="IN">Absen Masuk (IN)</option>
+        <option value="OUT">Absen Keluar (OUT)</option>
+    </select>
     
+    <!-- Pilihan Shift Baru -->
     <select id="shift">
         <option value="">-- Pilih Shift --</option>
         <option value="Pagi">Pagi</option>
         <option value="Siang">Siang</option>
-        <option value="Malam">Malam</option>
+        <option value="Middle">Middle</option>
     </select>
 
-    <!-- Dropdown Toko yang diisi otomatis dari Google Sheets -->
+    <!-- Dropdown Toko Singkat (ASMD, XMDG, dll) -->
     <select id="toko">
         <option value="">-- Memuat Daftar Toko... --</option>
     </select>
 
-    <!-- Kolom Keterangan Tambahan (Perbantuan/Jam Pendek) -->
     <textarea id="keterangan" rows="2" placeholder="Keterangan (Opsional: Perbantuan Toko X, Jam Pendek, dll)"></textarea>
 
     <p>Konfirmasi Kamera & GPS:</p>
@@ -43,14 +50,12 @@
     <div id="status"></div>
 
     <script>
-        // URL WEB APP TERBARU
         const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbxMNUvOx4bK986Tg60h-toFNdDYRj7vYOTpHluyOGXcyJsnzZKyIwJq34ZKHldlEJdlGw/exec";
 
         const video = document.getElementById('video');
         const statusDiv = document.getElementById('status');
         const selectToko = document.getElementById('toko');
 
-        // Memuat Daftar Toko dari Google Sheets saat Halaman Dibuka
         document.addEventListener('DOMContentLoaded', muatDaftarToko);
 
         function muatDaftarToko() {
@@ -61,8 +66,8 @@
                         selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
                         respons.data.forEach(toko => {
                             const option = document.createElement('option');
-                            option.value = toko.nama; // Mengirimkan Full Name Store
-                            option.textContent = toko.nama;
+                            option.value = toko.kode; // Menggunakan Kode Toko Singkat
+                            option.textContent = toko.kode;
                             selectToko.appendChild(option);
                         });
                     } else {
@@ -75,19 +80,19 @@
                 });
         }
 
-        // Membuka kamera depan HP karyawan secara otomatis saat memuat situs
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             .then(stream => { video.srcObject = stream; })
             .catch(err => { alert("Gagal akses kamera. Pastikan izin kamera aktif!"); });
 
         function prosesAbsensi() {
             const nama = document.getElementById('nama').value;
+            const tipeAbsen = document.getElementById('tipeAbsen').value;
             const shift = document.getElementById('shift').value;
             const toko = document.getElementById('toko').value;
             const keterangan = document.getElementById('keterangan').value;
 
-            if (!nama || !shift || !toko) {
-                alert("Kolom Nama, Shift, dan Toko wajib diisi!");
+            if (!nama || !tipeAbsen || !shift || !toko) {
+                alert("Kolom Nama, Tipe Absen, Shift, dan Toko wajib diisi!");
                 return;
             }
 
@@ -101,7 +106,7 @@
                         const lon = position.coords.longitude.toFixed(5);
                         const koordinat = `${lat}, ${lon}`;
                         
-                        cetakWatermarkDanKirim(nama, shift, toko, koordinat, keterangan);
+                        cetakWatermarkDanKirim(nama, tipeAbsen, shift, toko, koordinat, keterangan);
                     },
                     (error) => {
                         alert("Gagal mengambil GPS. Izin lokasi wajib diaktifkan!");
@@ -116,40 +121,35 @@
             }
         }
 
-        function cetakWatermarkDanKirim(nama, shift, toko, koordinat, keterangan) {
+        function cetakWatermarkDanKirim(nama, tipeAbsen, shift, toko, koordinat, keterangan) {
             statusDiv.innerText = "Memproses foto bukti...";
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Transformasi efek cermin kamera depan agar hasil foto natural
             ctx.translate(640, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, 640, 480);
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset data transformasi
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-            // Generate teks watermark waktu & GPS saat itu juga
             const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-            const teksWatermark = `${waktu} | GPS: ${koordinat}`;
+            const teksWatermark = `${waktu} | ${tipeAbsen} | GPS: ${koordinat}`;
 
-            // Cetak latar belakang hitam transparan untuk menjaga readability teks
             ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
             ctx.fillRect(0, 430, 640, 50);
 
-            // Tulis Teks Watermark berwarna kuning cerah
             ctx.font = "bold 18px Arial";
             ctx.fillStyle = "yellow";
             ctx.fillText(teksWatermark, 15, 462);
 
-            // Ekstrak canvas ke string format gambar Base64 JPEG
             const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
 
             statusDiv.innerText = "Mengirim data ke database...";
 
-            // Kirim Payload JSON menuju Google Web App via HTTP POST
             fetch(URL_GOOGLE_SCRIPT, {
                 method: "POST",
                 body: JSON.stringify({
                     nama: nama,
+                    tipeAbsen: tipeAbsen,
                     shift: shift,
                     toko: toko,
                     lokasi: koordinat,
@@ -160,7 +160,7 @@
             .then(res => res.json())
             .then(respons => {
                 if(respons.status === "success") {
-                    statusDiv.innerHTML = "<span style='color:green; font-weight:bold;'>Absen Berhasil Dicatat! Terima Kasih.</span>";
+                    statusDiv.innerHTML = "<span style='color:green; font-weight:bold;'>Absen " + tipeAbsen + " Berhasil Dicatat! Terima Kasih.</span>";
                     document.getElementById('nama').value = "";
                     document.getElementById('keterangan').value = "";
                 } else {
