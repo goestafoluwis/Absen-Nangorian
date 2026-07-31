@@ -229,386 +229,376 @@
     </div>
 
     <script>
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbzcHxPVm8Z8HiO2wuYZbbFg1ZGq-bp1OvuU3oG3WEQsmFvvjyOkGoZCvSVqQLfs-sclpA/exec";
+    const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbzcHxPVm8Z8HiO2wuYZbbFg1ZGq-bp1OvuU3oG3WEQsmFvvjyOkGoZCvSVqQLfs-sclpA/exec";
 
-        let currentMode = 'guest';
-        let pendingMode = '';
-        let dataKaryawanMap = {};
-        let rawMonitoringData = [];
-        let capturedBase64 = null;
-        let mediaStream = null; // Menyimpan handler stream kamera
+    let currentMode = 'guest';
+    let pendingMode = '';
+    let dataKaryawanMap = {};
+    let rawMonitoringData = [];
+    let capturedBase64 = null;
+    let mediaStream = null;
 
-        const passKeys = { superior: "gaspol", admin: "admin" };
+    const passKeys = { superior: "gaspol", admin: "admin" };
 
-        const video = document.getElementById('video');
-        const photoPreview = document.getElementById('photoPreview');
-        const statusDiv = document.getElementById('status');
-        const selectToko = document.getElementById('toko');
-        const inputNama = document.getElementById('nama');
-        const cameraContainer = document.getElementById('cameraContainer');
+    const video = document.getElementById('video');
+    const photoPreview = document.getElementById('photoPreview');
+    const statusDiv = document.getElementById('status');
+    const selectToko = document.getElementById('toko');
+    const inputNama = document.getElementById('nama');
+    const cameraContainer = document.getElementById('cameraContainer');
 
-        document.addEventListener('DOMContentLoaded', () => {
-            muatDataAwal();
-            startCamera();
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        muatDataAwal();
+        startCamera();
+    });
 
-        // FUNGSI NYALAKAN KAMERA
-        function startCamera() {
-            if (mediaStream) return; // Jika sudah nyala, lewati
-
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                .then(stream => { 
-                    mediaStream = stream;
-                    video.srcObject = stream; 
-                    document.getElementById('camStatusOverlay').innerHTML = '<span class="dot-live"></span> KAMERA AKTIF';
-                })
-                .catch(err => { console.log("Izin kamera diperlukan."); });
-        }
-
-        // FUNGSI MATIKAN KAMERA TOTAL (Hemat Baterai & Lampu Cam Mati)
-        function stopCamera() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-                video.srcObject = null;
-            }
-        }
-
-        function handleTipeAbsenChange() {
-            const tipe = document.getElementById('tipeAbsen').value;
-            const shiftSelect = document.getElementById('shift');
-
-            if (tipe === 'OFF' || tipe === 'CUTI') {
-                stopCamera();
-                cameraContainer.style.display = 'none';
-                shiftSelect.value = 'OFF';
-            } else {
-                cameraContainer.style.display = 'block';
-                if (!capturedBase64) startCamera();
-            }
-        }
-
-        function takeSnapshot() {
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.translate(640, 0); 
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0, 640, 480);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-            const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-            ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-            ctx.fillRect(0, 420, 640, 60);
-            ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
-            ctx.fillStyle = "#facc15";
-            ctx.fillText(`${waktu} | ABSEN PRATINJAU`, 16, 455);
-
-            capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-            
-            photoPreview.src = capturedBase64;
-            photoPreview.style.display = 'block';
-            video.style.display = 'none';
-
-            // MATIKAN KAMERA SEGERA SETELAH FOTO DIAMBIL
-            stopCamera();
-
-            document.getElementById('camStatusOverlay').innerHTML = '<span class="dot-off"></span> FOTO TERSIMPAN (Kamera Nonaktif)';
-            document.getElementById('btnSnap').style.display = 'none';
-            document.getElementById('btnRetake').style.display = 'block';
-        }
-
-        function resetSnapshot() {
-            capturedBase64 = null;
-            photoPreview.style.display = 'none';
-            video.style.display = 'block';
-
-            document.getElementById('btnSnap').style.display = 'block';
-            document.getElementById('btnRetake').style.display = 'none';
-
-            // NYALAKAN KEMBALI KAMERA SAAT INGIN FOTO ULANG
-            startCamera();
-        }
-
-        function switchMode(targetMode) {
-            if (targetMode === 'guest') {
-                setActiveMode('guest');
-                return;
-            }
-            pendingMode = targetMode;
-            document.getElementById('modalPrompt').innerText = `Masukkan Kata Sandi untuk ${targetMode.toUpperCase()} Mode:`;
-            document.getElementById('inputPass').value = '';
-            document.getElementById('passwordModal').style.display = 'flex';
-        }
-
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        function verifyPassword() {
-            const entered = document.getElementById('inputPass').value;
-            if (entered === passKeys[pendingMode]) {
-                closeModal('passwordModal');
-                setActiveMode(pendingMode);
-            } else {
-                alert("Kata Sandi Salah!");
-            }
-        }
-
-        function setActiveMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            
-            const btnIdx = mode === 'guest' ? 0 : (mode === 'superior' ? 1 : 2);
-            document.querySelectorAll('.mode-btn')[btnIdx].classList.add('active');
-
-            if (mode === 'guest') {
-                document.getElementById('section-guest').style.display = 'block';
-                document.getElementById('section-dashboard').style.display = 'none';
-                if (!capturedBase64) startCamera(); // Nyalakan kamera lagi jika kembali ke mode Guest
-            } else {
-                // SANGAT PENTING: Matikan kamera saat masuk mode Superior/Admin
-                stopCamera();
-                
-                document.getElementById('section-guest').style.display = 'none';
-                document.getElementById('section-dashboard').style.display = 'block';
-                document.getElementById('dash-title').innerText = mode === 'admin' ? "Dashboard Admin" : "Monitoring Superior";
-                document.getElementById('adminExtraTools').style.display = mode === 'admin' ? 'block' : 'none';
-                muatDataMonitoring();
-            }
-        }
-
-        function muatDataAwal() {
-            fetch(URL_GOOGLE_SCRIPT)
-                .then(res => res.json())
-                .then(respons => {
-                    if (respons.status === "success") {
-                        selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
-                        const filterToko = document.getElementById('filterToko');
-                        filterToko.innerHTML = '<option value="">Semua Lokasi Toko</option>';
-
-                        respons.toko.forEach(toko => {
-                            const opt = document.createElement('option');
-                            opt.value = toko.kode;
-                            opt.textContent = toko.kode;
-                            selectToko.appendChild(opt);
-
-                            const opt2 = document.createElement('option');
-                            opt2.value = toko.kode;
-                            opt2.textContent = toko.kode;
-                            filterToko.appendChild(opt2);
-                        });
-
-                        dataKaryawanMap = respons.karyawan || {};
-                    }
-                });
-        }
-
-        function muatDataMonitoring() {
-            const listDiv = document.getElementById('monitoringList');
-            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data real-time...</p>';
-
-            fetch(`${URL_GOOGLE_SCRIPT}?action=getMonitoring`)
-                .then(res => res.json())
-                .then(respons => {
-                    if (respons.status === "success") {
-                        rawMonitoringData = respons.absenToday || [];
-                        renderMonitoringList();
-                    }
-                })
-                .catch(err => {
-                    listDiv.innerHTML = '<p style="text-align: center; color: var(--error); padding: 20px;">Gagal mengambil data monitoring.</p>';
-                });
-        }
-
-        function renderMonitoringList() {
-            const selectedToko = document.getElementById('filterToko').value;
-            const listDiv = document.getElementById('monitoringList');
-            listDiv.innerHTML = '';
-
-            const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
-
-            if (filtered.length === 0) {
-                document.getElementById('stat-total').innerText = '0';
-                document.getElementById('stat-toko').innerText = '0';
-                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
-                return;
-            }
-
-            const groupedUser = {};
-            filtered.forEach(item => {
-                if (!groupedUser[item.nik]) {
-                    groupedUser[item.nik] = {
-                        nik: item.nik,
-                        nama: item.nama,
-                        toko: item.toko,
-                        shift: item.shift,
-                        in: null,
-                        out: null
-                    };
-                }
-                if (item.tipe === 'IN') groupedUser[item.nik].in = item;
-                if (item.tipe === 'OUT') groupedUser[item.nik].out = item;
-            });
-
-            const userList = Object.values(groupedUser);
-            document.getElementById('stat-total').innerText = userList.length;
-            const tokoUnik = new Set(userList.map(item => item.toko));
-            document.getElementById('stat-toko').innerText = tokoUnik.size;
-
-            userList.forEach(user => {
-                const el = document.createElement('div');
-                el.className = 'user-card';
-
-                let inTimeStr = "--:--";
-                let inDistStr = "";
-                let inPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
-                
-                if (user.in) {
-                    const dIn = new Date(user.in.timestamp);
-                    inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
-                    
-                    if (user.in.foto && user.in.foto.length > 20) {
-                        inPhotoHtml = `<img src="${user.in.foto}" alt="IN" onclick="viewLargePhoto('${user.in.foto}', '${user.nama} (IN)')">`;
-                    }
-                    if (user.in.jarak !== null && user.in.jarak !== undefined) {
-                        const styleJarak = user.in.jarak <= 100 ? 'color: #10b981' : 'color: #ef4444';
-                        inDistStr = `<div class="io-dist" style="${styleJarak}">📍 ${user.in.jarak}m</div>`;
-                    }
-                }
-
-                let outTimeStr = "--:--";
-                let outDistStr = "";
-                let outPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
-
-                if (user.out) {
-                    const dOut = new Date(user.out.timestamp);
-                    outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
-
-                    if (user.out.foto && user.out.foto.length > 20) {
-                        outPhotoHtml = `<img src="${user.out.foto}" alt="OUT" onclick="viewLargePhoto('${user.out.foto}', '${user.nama} (OUT)')">`;
-                    }
-                    if (user.out.jarak !== null && user.out.jarak !== undefined) {
-                        const styleJarak = user.out.jarak <= 100 ? 'color: #10b981' : 'color: #ef4444';
-                        outDistStr = `<div class="io-dist" style="${styleJarak}">📍 ${user.out.jarak}m</div>`;
-                    }
-                }
-
-                el.innerHTML = `
-                    <div class="user-card-header">
-                        <div>
-                            <h5>${user.nama}</h5>
-                            <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
-                        </div>
-                        <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
-                    </div>
-                    <div class="io-grid">
-                        <div class="io-box">
-                            <span class="io-title in">MASUK (IN)</span>
-                            <div class="thumb-box">${inPhotoHtml}</div>
-                            <div class="io-time">${inTimeStr}</div>
-                            ${inDistStr}
-                        </div>
-                        <div class="io-box">
-                            <span class="io-title out">KELUAR (OUT)</span>
-                            <div class="thumb-box">${outPhotoHtml}</div>
-                            <div class="io-time">${outTimeStr}</div>
-                            ${outDistStr}
-                        </div>
-                    </div>
-                `;
-                listDiv.appendChild(el);
-            });
-        }
-
-        function viewLargePhoto(src, title) {
-            document.getElementById('largePhoto').src = src;
-            document.getElementById('photoModalTitle').innerText = title;
-            document.getElementById('photoModal').style.display = 'flex';
-        }
-
-        function cekNik() {
-            const nikInput = document.getElementById('nik').value.trim();
-            inputNama.classList.remove('success', 'error');
-
-            if (dataKaryawanMap[nikInput]) {
-                inputNama.value = dataKaryawanMap[nikInput];
-                inputNama.classList.add('success');
-            } else if (nikInput.length > 0) {
-                inputNama.value = "NIK tidak ditemukan!";
-                inputNama.classList.add('error');
-            } else {
-                inputNama.value = "";
-            }
-        }
-
-        function prosesAbsensi() {
-            const nik = document.getElementById('nik').value.trim();
-            const nama = inputNama.value;
-            const tipeAbsen = document.getElementById('tipeAbsen').value;
-            const shift = document.getElementById('shift').value;
-            const toko = document.getElementById('toko').value;
-            const keterangan = document.getElementById('keterangan').value;
-
-            if (!nik || !dataKaryawanMap[nik]) { alert("Masukkan NIK yang valid!"); return; }
-            if (!tipeAbsen) { alert("Pilih Tipe Absen!"); return; }
-
-            if (tipeAbsen === 'OFF' || tipeAbsen === 'CUTI') {
-                kirimKeBackend({ nik, nama, tipeAbsen, shift: "OFF", toko: toko || "HQ", lokasi: "-", keterangan, foto: "-" });
-                return;
-            }
-
-            if (!shift || !toko) { alert("Pilih Shift dan Lokasi Toko!"); return; }
-            if (!capturedBase64) { alert("Ambil foto terlebih dahulu sebelum mengirim!"); return; }
-
-            const btnSubmit = document.getElementById('btnAbsen');
-            btnSubmit.disabled = true;
-            statusDiv.innerHTML = `<span style="color: var(--primary);">⏳ Mengambil lokasi GPS & Mengirim data...</span>`;
-
-            // MEMINTA GPS SECARA ON-DEMAND (TIDAK LALU-LALANG DI BACKGROUND)
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        const koordinat = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-                        kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: koordinat, keterangan, foto: capturedBase64 });
-                    },
-                    (error) => {
-                        kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: "0.00000, 0.00000", keterangan: keterangan + " (GPS Low-Signal)", foto: capturedBase64 });
-                    },
-                    { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
-                );
-            } else {
-                kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: "-", keterangan, foto: capturedBase64 });
-            }
-        }
-
-        function kirimKeBackend(payload) {
-            const btnSubmit = document.getElementById('btnAbsen');
-            btnSubmit.disabled = true;
-            statusDiv.innerHTML = `<span style="color: var(--primary);">⏳ Menyimpan absensi ke Server...</span>`;
-
-            fetch(URL_GOOGLE_SCRIPT, {
-                method: "POST",
-                body: JSON.stringify(payload)
+    function startCamera() {
+        if (mediaStream) return;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(stream => { 
+                mediaStream = stream;
+                video.srcObject = stream; 
+                document.getElementById('camStatusOverlay').innerHTML = '<span class="dot-live"></span> KAMERA AKTIF';
             })
+            .catch(err => { console.log("Izin kamera diperlukan."); });
+    }
+
+    function stopCamera() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+            video.srcObject = null;
+        }
+    }
+
+    function handleTipeAbsenChange() {
+        const tipe = document.getElementById('tipeAbsen').value;
+        const shiftSelect = document.getElementById('shift');
+
+        if (tipe === 'OFF' || tipe === 'CUTI') {
+            stopCamera();
+            cameraContainer.style.display = 'none';
+            shiftSelect.value = 'OFF';
+        } else {
+            cameraContainer.style.display = 'block';
+            if (!capturedBase64) startCamera();
+        }
+    }
+
+    function takeSnapshot() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.translate(640, 0); 
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, 640, 480);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+        ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+        ctx.fillRect(0, 420, 640, 60);
+        ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+        ctx.fillStyle = "#facc15";
+        ctx.fillText(`${waktu} | ABSEN PRATINJAU`, 16, 455);
+
+        capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        
+        photoPreview.src = capturedBase64;
+        photoPreview.style.display = 'block';
+        video.style.display = 'none';
+
+        stopCamera(); // Auto-off kamera
+
+        document.getElementById('camStatusOverlay').innerHTML = '<span class="dot-off"></span> FOTO TERSIMPAN (Kamera Off)';
+        document.getElementById('btnSnap').style.display = 'none';
+        document.getElementById('btnRetake').style.display = 'block';
+    }
+
+    function resetSnapshot() {
+        capturedBase64 = null;
+        photoPreview.style.display = 'none';
+        video.style.display = 'block';
+
+        document.getElementById('btnSnap').style.display = 'block';
+        document.getElementById('btnRetake').style.display = 'none';
+        startCamera();
+    }
+
+    function switchMode(targetMode) {
+        if (targetMode === 'guest') {
+            setActiveMode('guest');
+            return;
+        }
+        pendingMode = targetMode;
+        document.getElementById('modalPrompt').innerText = `Masukkan Kata Sandi untuk ${targetMode.toUpperCase()} Mode:`;
+        document.getElementById('inputPass').value = '';
+        document.getElementById('passwordModal').style.display = 'flex';
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function verifyPassword() {
+        const entered = document.getElementById('inputPass').value;
+        if (entered === passKeys[pendingMode]) {
+            closeModal('passwordModal');
+            setActiveMode(pendingMode);
+        } else {
+            alert("Kata Sandi Salah!");
+        }
+    }
+
+    function setActiveMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        
+        const btnIdx = mode === 'guest' ? 0 : (mode === 'superior' ? 1 : 2);
+        document.querySelectorAll('.mode-btn')[btnIdx].classList.add('active');
+
+        if (mode === 'guest') {
+            document.getElementById('section-guest').style.display = 'block';
+            document.getElementById('section-dashboard').style.display = 'none';
+            if (!capturedBase64) startCamera();
+        } else {
+            stopCamera(); // Matikan kamera jika pindah ke Superior/Admin
+            document.getElementById('section-guest').style.display = 'none';
+            document.getElementById('section-dashboard').style.display = 'block';
+            document.getElementById('dash-title').innerText = mode === 'admin' ? "Dashboard Admin" : "Monitoring Superior";
+            document.getElementById('adminExtraTools').style.display = mode === 'admin' ? 'block' : 'none';
+            muatDataMonitoring();
+        }
+    }
+
+    function muatDataAwal() {
+        fetch(URL_GOOGLE_SCRIPT)
             .then(res => res.json())
             .then(respons => {
                 if (respons.status === "success") {
-                    statusDiv.innerHTML = `<div style="background: #dcfce7; color: #15803d; padding: 10px; border-radius: 8px; margin-top: 10px;">✅ ABSENSI BERHASIL TERKIRIM!</div>`;
-                    document.getElementById('nik').value = "";
-                    inputNama.value = "";
-                    document.getElementById('keterangan').value = "";
-                    
-                    // PASCA ABSEN BERHASIL: Pastikan Kamera Benar-Benar Mati Total
-                    stopCamera();
-                    resetSnapshot();
-                } else {
-                    statusDiv.innerHTML = `<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-top: 10px;">❌ Gagal: ${respons.message}</div>`;
+                    selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
+                    const filterToko = document.getElementById('filterToko');
+                    filterToko.innerHTML = '<option value="">Semua Lokasi Toko</option>';
+
+                    respons.toko.forEach(toko => {
+                        const opt = document.createElement('option');
+                        opt.value = toko.kode;
+                        opt.textContent = toko.kode;
+                        selectToko.appendChild(opt);
+
+                        const opt2 = document.createElement('option');
+                        opt2.value = toko.kode;
+                        opt2.textContent = toko.kode;
+                        filterToko.appendChild(opt2);
+                    });
+
+                    dataKaryawanMap = respons.karyawan || {};
                 }
-                btnSubmit.disabled = false;
+            });
+    }
+
+    function muatDataMonitoring() {
+        const listDiv = document.getElementById('monitoringList');
+        listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data real-time...</p>';
+
+        fetch(`${URL_GOOGLE_SCRIPT}?action=getMonitoring`)
+            .then(res => res.json())
+            .then(respons => {
+                if (respons.status === "success") {
+                    rawMonitoringData = respons.absenToday || [];
+                    renderMonitoringList();
+                }
             })
             .catch(err => {
-                statusDiv.innerHTML = `<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-top: 10px;">❌ Koneksi Terputus / Gagal Mengirim. Coba lagi!</div>`;
-                btnSubmit.disabled = false;
+                listDiv.innerHTML = '<p style="text-align: center; color: var(--error); padding: 20px;">Gagal mengambil data monitoring.</p>';
             });
+    }
+
+    function renderMonitoringList() {
+        const selectedToko = document.getElementById('filterToko').value;
+        const listDiv = document.getElementById('monitoringList');
+        listDiv.innerHTML = '';
+
+        const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
+
+        if (filtered.length === 0) {
+            document.getElementById('stat-total').innerText = '0';
+            document.getElementById('stat-toko').innerText = '0';
+            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
+            return;
         }
-    </script>
+
+        const groupedUser = {};
+        filtered.forEach(item => {
+            if (!groupedUser[item.nik]) {
+                groupedUser[item.nik] = {
+                    nik: item.nik,
+                    nama: item.nama,
+                    toko: item.toko,
+                    shift: item.shift,
+                    in: null,
+                    out: null
+                };
+            }
+            if (item.tipe === 'IN') groupedUser[item.nik].in = item;
+            if (item.tipe === 'OUT') groupedUser[item.nik].out = item;
+        });
+
+        const userList = Object.values(groupedUser);
+        document.getElementById('stat-total').innerText = userList.length;
+        const tokoUnik = new Set(userList.map(item => item.toko));
+        document.getElementById('stat-toko').innerText = tokoUnik.size;
+
+        userList.forEach(user => {
+            const el = document.createElement('div');
+            el.className = 'user-card';
+
+            let inTimeStr = "--:--";
+            let inDistStr = "";
+            let inPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
+            
+            if (user.in) {
+                const dIn = new Date(user.in.timestamp);
+                inTimeStr = !isNaN(dIn) ? dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen IN";
+                
+                if (user.in.foto && user.in.foto.length > 20) {
+                    inPhotoHtml = `<img src="${user.in.foto}" alt="IN" onclick="viewLargePhoto('${user.in.foto}', '${user.nama} (IN)')">`;
+                }
+                if (user.in.jarak !== null && user.in.jarak !== undefined) {
+                    const styleJarak = user.in.jarak <= 100 ? 'color: #10b981' : 'color: #ef4444';
+                    inDistStr = `<div class="io-dist" style="${styleJarak}">📍 ${user.in.jarak}m</div>`;
+                }
+            }
+
+            let outTimeStr = "--:--";
+            let outDistStr = "";
+            let outPhotoHtml = '<div class="thumb-empty">Belum Absen</div>';
+
+            if (user.out) {
+                const dOut = new Date(user.out.timestamp);
+                outTimeStr = !isNaN(dOut) ? dOut.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Absen OUT";
+
+                if (user.out.foto && user.out.foto.length > 20) {
+                    outPhotoHtml = `<img src="${user.out.foto}" alt="OUT" onclick="viewLargePhoto('${user.out.foto}', '${user.nama} (OUT)')">`;
+                }
+                if (user.out.jarak !== null && user.out.jarak !== undefined) {
+                    const styleJarak = user.out.jarak <= 100 ? 'color: #10b981' : 'color: #ef4444';
+                    outDistStr = `<div class="io-dist" style="${styleJarak}">📍 ${user.out.jarak}m</div>`;
+                }
+            }
+
+            el.innerHTML = `
+                <div class="user-card-header">
+                    <div>
+                        <h5>${user.nama}</h5>
+                        <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
+                    </div>
+                    <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
+                </div>
+                <div class="io-grid">
+                    <div class="io-box">
+                        <span class="io-title in">MASUK (IN)</span>
+                        <div class="thumb-box">${inPhotoHtml}</div>
+                        <div class="io-time">${inTimeStr}</div>
+                        ${inDistStr}
+                    </div>
+                    <div class="io-box">
+                        <span class="io-title out">KELUAR (OUT)</span>
+                        <div class="thumb-box">${outPhotoHtml}</div>
+                        <div class="io-time">${outTimeStr}</div>
+                        ${outDistStr}
+                    </div>
+                </div>
+            `;
+            listDiv.appendChild(el);
+        });
+    }
+
+    function viewLargePhoto(src, title) {
+        document.getElementById('largePhoto').src = src;
+        document.getElementById('photoModalTitle').innerText = title;
+        document.getElementById('photoModal').style.display = 'flex';
+    }
+
+    function cekNik() {
+        const nikInput = document.getElementById('nik').value.trim();
+        inputNama.classList.remove('success', 'error');
+
+        if (dataKaryawanMap[nikInput]) {
+            inputNama.value = dataKaryawanMap[nikInput];
+            inputNama.classList.add('success');
+        } else if (nikInput.length > 0) {
+            inputNama.value = "NIK tidak ditemukan!";
+            inputNama.classList.add('error');
+        } else {
+            inputNama.value = "";
+        }
+    }
+
+    function prosesAbsensi() {
+        const nik = document.getElementById('nik').value.trim();
+        const nama = inputNama.value;
+        const tipeAbsen = document.getElementById('tipeAbsen').value;
+        const shift = document.getElementById('shift').value;
+        const toko = document.getElementById('toko').value;
+        const keterangan = document.getElementById('keterangan').value;
+
+        if (!nik || !dataKaryawanMap[nik]) { alert("Masukkan NIK yang valid!"); return; }
+        if (!tipeAbsen) { alert("Pilih Tipe Absen!"); return; }
+
+        if (tipeAbsen === 'OFF' || tipeAbsen === 'CUTI') {
+            kirimKeBackend({ nik, nama, tipeAbsen, shift: "OFF", toko: toko || "HQ", lokasi: "-", keterangan, foto: "-" });
+            return;
+        }
+
+        if (!shift || !toko) { alert("Pilih Shift dan Lokasi Toko!"); return; }
+        if (!capturedBase64) { alert("Ambil foto terlebih dahulu sebelum mengirim!"); return; }
+
+        const btnSubmit = document.getElementById('btnAbsen');
+        btnSubmit.disabled = true;
+        statusDiv.innerHTML = `<span style="color: var(--primary);">⏳ Mengambil lokasi GPS & Mengirim data...</span>`;
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const koordinat = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+                    kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: koordinat, keterangan, foto: capturedBase64 });
+                },
+                (error) => {
+                    kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: "0.00000, 0.00000", keterangan: keterangan + " (GPS Low-Signal)", foto: capturedBase64 });
+                },
+                { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
+            );
+        } else {
+            kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: "-", keterangan, foto: capturedBase64 });
+        }
+    }
+
+    function kirimKeBackend(payload) {
+        const btnSubmit = document.getElementById('btnAbsen');
+        btnSubmit.disabled = true;
+        statusDiv.innerHTML = `<span style="color: var(--primary);">⏳ Menyimpan absensi ke Server...</span>`;
+
+        fetch(URL_GOOGLE_SCRIPT, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(respons => {
+            if (respons.status === "success") {
+                statusDiv.innerHTML = `<div style="background: #dcfce7; color: #15803d; padding: 10px; border-radius: 8px; margin-top: 10px;">✅ ABSENSI BERHASIL TERKIRIM!</div>`;
+                document.getElementById('nik').value = "";
+                inputNama.value = "";
+                document.getElementById('keterangan').value = "";
+                
+                stopCamera();
+                resetSnapshot();
+            } else {
+                statusDiv.innerHTML = `<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-top: 10px;">❌ Gagal: ${respons.message}</div>`;
+            }
+            btnSubmit.disabled = false;
+        })
+        .catch(err => {
+            statusDiv.innerHTML = `<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-top: 10px;">❌ Koneksi Terputus / Gagal Mengirim. Coba lagi!</div>`;
+            btnSubmit.disabled = false;
+        });
+    }
+</script>
 </body>
 </html>
