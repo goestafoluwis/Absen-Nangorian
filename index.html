@@ -26,7 +26,6 @@
         body { background-color: var(--bg-body); color: var(--text-main); padding: 16px; min-height: 100vh; }
         .container { max-width: 500px; margin: 0 auto; background: var(--card-bg); border-radius: 20px; padding: 24px; border: 1px solid var(--border-color); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
 
-        /* Navigation Bar Mode */
         .mode-nav { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
         .mode-btn { flex: 1; padding: 10px; border: none; background: transparent; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: all 0.2s; }
         .mode-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -44,13 +43,13 @@
         .nama-preview.success { color: var(--success); border-color: var(--success); background-color: #f0fdf4 !important; }
         .nama-preview.error { color: var(--error); border-color: var(--error); background-color: #fef2f2 !important; }
 
-        .camera-card { background: #0f172a; border-radius: 14px; overflow: hidden; position: relative; margin: 16px 0; }
+        .camera-card { background: #0f172a; border-radius: 14px; overflow: hidden; position: relative; margin: 16px 0; transition: all 0.3s ease; }
         #video { width: 100%; height: 220px; object-fit: cover; display: block; transform: scaleX(-1); }
         .camera-overlay { position: absolute; top: 10px; left: 10px; background: rgba(15,23,42,0.6); padding: 4px 10px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
         .dot-live { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        button.btn-submit { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        button.btn-submit { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         button.btn-submit:hover { background: var(--primary-hover); }
         button:disabled { background: #94a3b8; cursor: not-allowed; }
 
@@ -70,6 +69,8 @@
         .badge { padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 10px; }
         .badge-in { background: #dcfce7; color: #166534; }
         .badge-out { background: #fee2e2; color: #991b1b; }
+        .badge-off { background: #fef3c7; color: #92400e; }
+        .badge-cuti { background: #e0e7ff; color: #3730a3; }
 
         /* Modal Lock */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
@@ -106,34 +107,38 @@
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex: 1;">
                     <label for="tipeAbsen">Tipe Absen</label>
-                    <select id="tipeAbsen">
+                    <select id="tipeAbsen" onchange="handleTipeAbsenChange()">
                         <option value="">-- Pilih --</option>
                         <option value="IN">Masuk (IN)</option>
                         <option value="OUT">Keluar (OUT)</option>
+                        <option value="OFF">Day Off</option>
+                        <option value="CUTI">Cuti</option>
                     </select>
                 </div>
-                <div class="form-group" style="flex: 1;">
+                <div class="form-group" style="flex: 1;" id="groupShift">
                     <label for="shift">Shift Work</label>
                     <select id="shift">
                         <option value="">-- Pilih --</option>
                         <option value="Pagi">Pagi</option>
                         <option value="Siang">Siang</option>
                         <option value="Middle">Middle</option>
+                        <option value="OFF">Libur / Cuti</option>
                     </select>
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="groupToko">
                 <label for="toko">Lokasi Toko</label>
                 <select id="toko"><option value="">-- Memuat Toko... --</option></select>
             </div>
 
             <div class="form-group">
-                <label for="keterangan">Keterangan (Opsional)</label>
-                <textarea id="keterangan" rows="2" placeholder="Catatan perbantuan, jam pendek, dll..."></textarea>
+                <label for="keterangan">Keterangan (Opsional / Alasan Cuti)</label>
+                <textarea id="keterangan" rows="2" placeholder="Catatan perbantuan, alasan cuti, dll..."></textarea>
             </div>
 
-            <div class="camera-card">
+            <!-- Pratinjau Kamera (Disembunyikan jika OFF / CUTI) -->
+            <div class="camera-card" id="cameraBox">
                 <div class="camera-overlay"><span class="dot-live"></span> KAMERA AKTIF</div>
                 <video id="video" autoplay playsinline></video>
             </div>
@@ -153,7 +158,7 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <h4 id="stat-total">0</h4>
-                    <p>Hadir Hari Ini</p>
+                    <p>Total Absen Hari Ini</p>
                 </div>
                 <div class="stat-card">
                     <h4 id="stat-toko">-</h4>
@@ -191,7 +196,7 @@
     </div>
 
     <script>
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwZ5ce_H3AJV9yI_tE1sAtFBIRN75QdNYnTC2M6yn4kXzTnLtodUbCR1ynFJYFBwtLrMA/exec";
+        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbxui9YNRiWav5Vii_Q_crkk53hzOKD74uI3qaTDMdwEpXTOkWcMqDmQ0ItGq88RPsZA6g/exec";
 
         let currentMode = 'guest';
         let pendingMode = '';
@@ -207,11 +212,25 @@
         const statusDiv = document.getElementById('status');
         const selectToko = document.getElementById('toko');
         const inputNama = document.getElementById('nama');
+        const cameraBox = document.getElementById('cameraBox');
 
         document.addEventListener('DOMContentLoaded', () => {
             muatDataAwal();
             startCamera();
         });
+
+        // Kontrol Tampilan Kamera Berdasarkan Tipe Absen
+        function handleTipeAbsenChange() {
+            const tipe = document.getElementById('tipeAbsen').value;
+            const shiftSelect = document.getElementById('shift');
+
+            if (tipe === 'OFF' || tipe === 'CUTI') {
+                cameraBox.style.display = 'none'; // Sembunyikan Kamera
+                shiftSelect.value = 'OFF';
+            } else {
+                cameraBox.style.display = 'block'; // Tampilkan Kamera
+            }
+        }
 
         function switchMode(targetMode) {
             if (targetMode === 'guest') {
@@ -313,18 +332,38 @@
             const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
 
             if (filtered.length === 0) {
-                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi.</p>';
+                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
                 return;
             }
 
             filtered.forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'absen-item';
-                const badgeClass = item.tipe === 'IN' ? 'badge-in' : 'badge-out';
+                
+                let badgeClass = 'badge-in';
+                if (item.tipe === 'OUT') badgeClass = 'badge-out';
+                if (item.tipe === 'OFF') badgeClass = 'badge-off';
+                if (item.tipe === 'CUTI') badgeClass = 'badge-cuti';
+
+                let jarakInfo = "Jarak: -";
+                let jarakStyle = "color: #64748b;";
+                if (item.jarak !== null && item.jarak !== undefined && item.tipe !== 'OFF' && item.tipe !== 'CUTI') {
+                    if (item.jarak <= 100) {
+                        jarakInfo = `📍 Jarak: ${item.jarak}m (Sesuai)`;
+                        jarakStyle = "color: #10b981; font-weight: 600;";
+                    } else {
+                        jarakInfo = `⚠️ Jarak: ${item.jarak}m (Luar Radius)`;
+                        jarakStyle = "color: #ef4444; font-weight: 600;";
+                    }
+                } else if (item.tipe === 'OFF' || item.tipe === 'CUTI') {
+                    jarakInfo = "Status: Non-Shift Field";
+                }
+
                 el.innerHTML = `
-                    <div class="info">
-                        <h5>${item.nama} (${item.nik})</h5>
-                        <p>Toko: <strong>${item.toko}</strong> | Shift: ${item.shift}</p>
+                    <div class="info" style="flex: 1;">
+                        <h5>${item.nama} <span style="font-size: 11px; color: #64748b; font-weight: normal;">(${item.nik})</span></h5>
+                        <p>Toko: <strong style="color: #0f172a;">${item.toko || '-'}</strong> | Shift: ${item.shift}</p>
+                        <p style="font-size: 11px; margin-top: 2px; ${jarakStyle}">${jarakInfo}</p>
                     </div>
                     <div>
                         <span class="badge ${badgeClass}">${item.tipe}</span>
@@ -352,7 +391,7 @@
         function startCamera() {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
                 .then(stream => { video.srcObject = stream; })
-                .catch(err => { console.log("Izin kamera diperlukan."); });
+                .catch(err => { console.log("Izin kamera diperlukan untuk absensi IN/OUT."); });
         }
 
         function prosesAbsensi() {
@@ -364,7 +403,36 @@
             const keterangan = document.getElementById('keterangan').value;
 
             if (!nik || !dataKaryawanMap[nik]) { alert("Masukkan NIK yang valid!"); return; }
-            if (!tipeAbsen || !shift || !toko) { alert("Lengkapi tipe absen, shift, dan toko!"); return; }
+            if (!tipeAbsen) { alert("Pilih Tipe Absen!"); return; }
+
+            // Jika Day Off / Cuti, Kirim langsung tanpa foto & tanpa paksa GPS
+            if (tipeAbsen === 'OFF' || tipeAbsen === 'CUTI') {
+                statusDiv.innerText = "Mengirim data " + tipeAbsen + "...";
+                document.getElementById('btnAbsen').disabled = true;
+
+                fetch(URL_GOOGLE_SCRIPT, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        nik, nama, tipeAbsen, shift: "OFF", toko: toko || "HQ", lokasi: "-", keterangan, foto: "-"
+                    })
+                })
+                .then(res => res.json())
+                .then(respons => {
+                    if (respons.status === "success") {
+                        statusDiv.innerHTML = "<span style='color:green;'>✓ Pengajuan " + tipeAbsen + " Berhasil!</span>";
+                        document.getElementById('nik').value = "";
+                        inputNama.value = "";
+                        document.getElementById('keterangan').value = "";
+                    } else {
+                        statusDiv.innerHTML = "<span style='color:red;'>" + respons.message + "</span>";
+                    }
+                    document.getElementById('btnAbsen').disabled = false;
+                });
+                return;
+            }
+
+            // Jika IN/OUT, Wajib GPS & Foto Kamera
+            if (!shift || !toko) { alert("Lengkapi shift dan toko!"); return; }
 
             statusDiv.innerText = "Mengambil lokasi GPS...";
             document.getElementById('btnAbsen').disabled = true;
@@ -375,7 +443,7 @@
                     cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan);
                 },
                 (err) => {
-                    alert("GPS Wajib Aktif!");
+                    alert("GPS Wajib Aktif untuk Absen Masuk/Keluar!");
                     document.getElementById('btnAbsen').disabled = false;
                 },
                 { enableHighAccuracy: true }
@@ -408,6 +476,7 @@
                     statusDiv.innerHTML = "<span style='color:green;'>✓ Absen Berhasil!</span>";
                     document.getElementById('nik').value = "";
                     inputNama.value = "";
+                    document.getElementById('keterangan').value = "";
                 } else {
                     statusDiv.innerHTML = "<span style='color:red;'>" + respons.message + "</span>";
                 }
