@@ -4,62 +4,288 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Absen Team Nangorian</title>
+    <!-- Google Fonts untuk Tipografi Modern -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: auto; text-align: center; }
-        input, select, button, textarea { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
-        textarea { resize: vertical; font-family: Arial, sans-serif; }
-        button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        .nama-preview { background-color: #e9ecef; color: #495057; font-weight: bold; text-align: left; }
-        #video { width: 100%; max-width: 400px; border-radius: 8px; transform: scaleX(-1); }
-        #status { font-weight: bold; color: blue; margin-top: 10px; word-wrap: break-word; }
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-body: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 440px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .header h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background-color: #f8fafc;
+            color: var(--text-main);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            background-color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .nama-preview {
+            background-color: #f1f5f9 !important;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .nama-preview.success {
+            color: var(--success);
+            border-color: var(--success);
+            background-color: #f0fdf4 !important;
+        }
+
+        .nama-preview.error {
+            color: var(--error);
+            border-color: var(--error);
+            background-color: #fef2f2 !important;
+        }
+
+        .camera-card {
+            background: #0f172a;
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+            margin: 20px 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        #video {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            padding: 4px 10px;
+            border-radius: 20px;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot-live {
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status {
+            margin-top: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            min-height: 20px;
+            line-height: 1.4;
+        }
+
+        .status-success { color: var(--success); }
+        .status-error { color: var(--error); }
+        .status-info { color: var(--primary); }
     </style>
 </head>
 <body>
 
-    <h2>Absen Team Nangorian</h2>
-    
-    <!-- Input NIK -->
-    <input type="number" id="nik" placeholder="Masukkan NIK Karyawan" oninput="cekNik()" required>
-    
-    <!-- Nama Otomatis Terisi -->
-    <input type="text" id="nama" class="nama-preview" placeholder="Nama Karyawan Akan Muncul Otomatis" readonly>
+    <div class="container">
+        <div class="header">
+            <h2>Absen Team Nangorian</h2>
+            <p>Sistem Kehadiran Digital & Verifikasi Lokasi</p>
+        </div>
 
-    <select id="tipeAbsen">
-        <option value="">-- Pilih Tipe Absen --</option>
-        <option value="IN">Absen Masuk (IN)</option>
-        <option value="OUT">Absen Keluar (OUT)</option>
-    </select>
-    
-    <select id="shift">
-        <option value="">-- Pilih Shift --</option>
-        <option value="Pagi">Pagi</option>
-        <option value="Siang">Siang</option>
-        <option value="Middle">Middle</option>
-    </select>
+        <!-- Input NIK -->
+        <div class="form-group">
+            <label for="nik">NIK Karyawan</label>
+            <input type="number" id="nik" placeholder="Contoh: 32208018" oninput="cekNik()" required>
+        </div>
 
-    <select id="toko">
-        <option value="">-- Memuat Daftar Toko... --</option>
-    </select>
+        <!-- Nama Otomatis Terisi -->
+        <div class="form-group">
+            <label for="nama">Nama Lengkap</label>
+            <input type="text" id="nama" class="nama-preview" placeholder="Otomatis terisi..." readonly>
+        </div>
 
-    <textarea id="keterangan" rows="2" placeholder="Keterangan (Opsional: Perbantuan Toko X, Jam Pendek, dll)"></textarea>
+        <!-- Tipe Absen & Shift Dalam 1 Baris -->
+        <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="tipeAbsen">Tipe Absen</label>
+                <select id="tipeAbsen">
+                    <option value="">-- Pilih --</option>
+                    <option value="IN">Masuk (IN)</option>
+                    <option value="OUT">Keluar (OUT)</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="shift">Shift Work</label>
+                <select id="shift">
+                    <option value="">-- Pilih --</option>
+                    <option value="Pagi">Pagi</option>
+                    <option value="Siang">Siang</option>
+                    <option value="Middle">Middle</option>
+                </select>
+            </div>
+        </div>
 
-    <p>Konfirmasi Kamera & GPS:</p>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+        <!-- Pilihan Toko -->
+        <div class="form-group">
+            <label for="toko">Lokasi Toko</label>
+            <select id="toko">
+                <option value="">-- Memuat Daftar Toko... --</option>
+            </select>
+        </div>
 
-    <button type="button" id="btnAbsen" onclick="prosesAbsensi()">KIRIM ABSENSI</button>
-    <div id="status"></div>
+        <!-- Keterangan -->
+        <div class="form-group">
+            <label for="keterangan">Keterangan (Opsional)</label>
+            <textarea id="keterangan" rows="2" placeholder="Catatan perbantuan, jam pendek, dll..."></textarea>
+        </div>
+
+        <!-- Pratinjau Kamera -->
+        <div class="camera-card">
+            <div class="camera-overlay">
+                <span class="dot-live"></span> KAMERA AKTIF
+            </div>
+            <video id="video" autoplay playsinline></video>
+        </div>
+        <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+        <!-- Tombol Kirim -->
+        <button type="button" id="btnAbsen" onclick="prosesAbsensi()">KIRIM ABSENSI</button>
+        <div id="status"></div>
+    </div>
 
     <script>
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbzcHxPVm8Z8HiO2wuYZbbFg1ZGq-bp1OvuU3oG3WEQsmFvvjyOkGoZCvSVqQLfs-sclpA/exec";
+        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbxMNUvOx4bK986Tg60h-toFNdDYRj7vYOTpHluyOGXcyJsnzZKyIwJq34ZKHldlEJdlGw/exec";
 
         const video = document.getElementById('video');
         const statusDiv = document.getElementById('status');
         const selectToko = document.getElementById('toko');
         const inputNama = document.getElementById('nama');
         
-        let dataKaryawanMap = {}; // Menampung pasangan NIK -> Nama
+        let dataKaryawanMap = {}; 
 
         document.addEventListener('DOMContentLoaded', muatDataAwal);
 
@@ -68,7 +294,6 @@
                 .then(res => res.json())
                 .then(respons => {
                     if (respons.status === "success") {
-                        // 1. Set Data Toko
                         selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
                         respons.toko.forEach(toko => {
                             const option = document.createElement('option');
@@ -77,7 +302,6 @@
                             selectToko.appendChild(option);
                         });
 
-                        // 2. Set Data Karyawan
                         dataKaryawanMap = respons.karyawan || {};
                     } else {
                         selectToko.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
@@ -89,15 +313,16 @@
                 });
         }
 
-        // Fungsi Otomatis Mencari Nama Berdasarkan NIK
         function cekNik() {
             const nikInput = document.getElementById('nik').value.trim();
+            inputNama.classList.remove('success', 'error');
+
             if (dataKaryawanMap[nikInput]) {
                 inputNama.value = dataKaryawanMap[nikInput];
-                inputNama.style.color = "green";
+                inputNama.classList.add('success');
             } else if (nikInput.length > 0) {
                 inputNama.value = "NIK tidak ditemukan!";
-                inputNama.style.color = "red";
+                inputNama.classList.add('error');
             } else {
                 inputNama.value = "";
             }
@@ -116,7 +341,7 @@
             const keterangan = document.getElementById('keterangan').value;
 
             if (!nik || !dataKaryawanMap[nik]) {
-                alert("Masukkan NIK yang terdaftar dengan benar!");
+                alert("Masukkan NIK terdaftar yang valid!");
                 return;
             }
 
@@ -125,7 +350,8 @@
                 return;
             }
 
-            statusDiv.innerText = "Mengambil lokasi GPS...";
+            statusDiv.className = "status-info";
+            statusDiv.innerText = "Mengambil koordinat lokasi (GPS)...";
             document.getElementById('btnAbsen').disabled = true;
 
             if (navigator.geolocation) {
@@ -151,7 +377,7 @@
         }
 
         function cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan) {
-            statusDiv.innerText = "Memproses foto bukti...";
+            statusDiv.innerText = "Memproses foto & watermark...";
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             
@@ -163,12 +389,12 @@
             const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
             const teksWatermark = `${waktu} | ${nik} - ${nama} | ${tipeAbsen}`;
 
-            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-            ctx.fillRect(0, 430, 640, 50);
+            ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+            ctx.fillRect(0, 420, 640, 60);
 
-            ctx.font = "bold 16px Arial";
-            ctx.fillStyle = "yellow";
-            ctx.fillText(teksWatermark, 15, 462);
+            ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+            ctx.fillStyle = "#facc15";
+            ctx.fillText(teksWatermark, 16, 455);
 
             const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
 
@@ -190,17 +416,21 @@
             .then(res => res.json())
             .then(respons => {
                 if(respons.status === "success") {
-                    statusDiv.innerHTML = "<span style='color:green; font-weight:bold;'>Absen " + tipeAbsen + " Berhasil! Terima Kasih, " + nama + ".</span>";
+                    statusDiv.className = "status-success";
+                    statusDiv.innerHTML = "✓ Absen " + tipeAbsen + " Berhasil! Terima kasih, " + nama + ".";
                     document.getElementById('nik').value = "";
                     inputNama.value = "";
+                    inputNama.classList.remove('success');
                     document.getElementById('keterangan').value = "";
                 } else {
-                    statusDiv.innerHTML = "<span style='color:red; font-weight:bold;'>Gagal: " + respons.message + "</span>";
+                    statusDiv.className = "status-error";
+                    statusDiv.innerHTML = "✕ Gagal: " + respons.message;
                 }
                 document.getElementById('btnAbsen').disabled = false;
             })
             .catch(err => {
-                statusDiv.innerHTML = "<span style='color:red; font-weight:bold;'>Terjadi kesalahan jaringan!</span>";
+                statusDiv.className = "status-error";
+                statusDiv.innerHTML = "✕ Terjadi kesalahan jaringan!";
                 document.getElementById('btnAbsen').disabled = false;
             });
         }
