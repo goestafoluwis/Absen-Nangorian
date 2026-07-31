@@ -43,13 +43,19 @@
         .nama-preview.success { color: var(--success); border-color: var(--success); background-color: #f0fdf4 !important; }
         .nama-preview.error { color: var(--error); border-color: var(--error); background-color: #fef2f2 !important; }
 
-        .camera-card { background: #0f172a; border-radius: 14px; overflow: hidden; position: relative; margin: 16px 0; transition: all 0.3s ease; }
-        #video { width: 100%; height: 220px; object-fit: cover; display: block; transform: scaleX(-1); }
-        .camera-overlay { position: absolute; top: 10px; left: 10px; background: rgba(15,23,42,0.6); padding: 4px 10px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        /* Camera Box Styles */
+        .camera-card { background: #0f172a; border-radius: 14px; overflow: hidden; position: relative; margin: 16px 0; }
+        #video, #photoPreview { width: 100%; height: 230px; object-fit: cover; display: block; }
+        #video { transform: scaleX(-1); }
+        .camera-overlay { position: absolute; top: 10px; left: 10px; background: rgba(15,23,42,0.6); padding: 4px 10px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; z-index: 5; }
         .dot-live { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        button.btn-submit { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .cam-btn-group { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-cam { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; background: #f1f5f9; color: var(--text-main); }
+        .btn-cam.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+
+        button.btn-submit { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 10px; font-size: 14px; }
         button.btn-submit:hover { background: var(--primary-hover); }
         button:disabled { background: #94a3b8; cursor: not-allowed; }
 
@@ -72,7 +78,6 @@
         .badge-off { background: #fef3c7; color: #92400e; }
         .badge-cuti { background: #e0e7ff; color: #3730a3; }
 
-        /* Modal Lock */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
         .modal-content { background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 320px; text-align: center; }
     </style>
@@ -137,11 +142,19 @@
                 <textarea id="keterangan" rows="2" placeholder="Catatan perbantuan, alasan cuti, dll..."></textarea>
             </div>
 
-            <!-- Pratinjau Kamera (Disembunyikan jika OFF / CUTI) -->
-            <div class="camera-card" id="cameraBox">
-                <div class="camera-overlay"><span class="dot-live"></span> KAMERA AKTIF</div>
-                <video id="video" autoplay playsinline></video>
+            <!-- Kamera & Preview Box -->
+            <div id="cameraContainer">
+                <div class="camera-card">
+                    <div class="camera-overlay" id="camStatusOverlay"><span class="dot-live"></span> KAMERA AKTIF</div>
+                    <video id="video" autoplay playsinline></video>
+                    <img id="photoPreview" style="display: none;" alt="Preview Absen">
+                </div>
+                <div class="cam-btn-group">
+                    <button type="button" class="btn-cam active" id="btnSnap" onclick="takeSnapshot()">📸 AMBIL FOTO</button>
+                    <button type="button" class="btn-cam" id="btnRetake" onclick="resetSnapshot()" style="display: none;">🔄 Foto Ulang</button>
+                </div>
             </div>
+
             <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
 
             <button class="btn-submit" id="btnAbsen" onclick="prosesAbsensi()">KIRIM ABSENSI</button>
@@ -196,12 +209,13 @@
     </div>
 
     <script>
-        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbxui9YNRiWav5Vii_Q_crkk53hzOKD74uI3qaTDMdwEpXTOkWcMqDmQ0ItGq88RPsZA6g/exec";
+        const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbzcHxPVm8Z8HiO2wuYZbbFg1ZGq-bp1OvuU3oG3WEQsmFvvjyOkGoZCvSVqQLfs-sclpA/exec";
 
         let currentMode = 'guest';
         let pendingMode = '';
         let dataKaryawanMap = {};
         let rawMonitoringData = [];
+        let capturedBase64 = null; // Menyimpan data foto sementara
 
         const passKeys = {
             superior: "gaspol",
@@ -209,27 +223,74 @@
         };
 
         const video = document.getElementById('video');
+        const photoPreview = document.getElementById('photoPreview');
         const statusDiv = document.getElementById('status');
         const selectToko = document.getElementById('toko');
         const inputNama = document.getElementById('nama');
-        const cameraBox = document.getElementById('cameraBox');
+        const cameraContainer = document.getElementById('cameraContainer');
 
         document.addEventListener('DOMContentLoaded', () => {
             muatDataAwal();
             startCamera();
         });
 
-        // Kontrol Tampilan Kamera Berdasarkan Tipe Absen
+        // Tampilkan / Sembunyikan kamera jika Day Off / Cuti
         function handleTipeAbsenChange() {
             const tipe = document.getElementById('tipeAbsen').value;
             const shiftSelect = document.getElementById('shift');
 
             if (tipe === 'OFF' || tipe === 'CUTI') {
-                cameraBox.style.display = 'none'; // Sembunyikan Kamera
+                cameraContainer.style.display = 'none';
                 shiftSelect.value = 'OFF';
             } else {
-                cameraBox.style.display = 'block'; // Tampilkan Kamera
+                cameraContainer.style.display = 'block';
             }
+        }
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+                .then(stream => { video.srcObject = stream; })
+                .catch(err => { console.log("Izin kamera diperlukan untuk absensi."); });
+        }
+
+        // Ambil Foto & Freeze (Preview)
+        function takeSnapshot() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.translate(640, 0); 
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, 640, 480);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            // Watermark waktu dasar
+            const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+            ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+            ctx.fillRect(0, 420, 640, 60);
+            ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+            ctx.fillStyle = "#facc15";
+            ctx.fillText(`${waktu} | PRATINJAU FOTO`, 16, 455);
+
+            capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Tampilkan Gambar & Sembunyikan Video Streaming
+            photoPreview.src = capturedBase64;
+            photoPreview.style.display = 'block';
+            video.style.display = 'none';
+
+            document.getElementById('camStatusOverlay').innerHTML = '✅ FOTO TERSIMPAN';
+            document.getElementById('btnSnap').style.display = 'none';
+            document.getElementById('btnRetake').style.display = 'block';
+        }
+
+        // Ulangi Ambil Foto
+        function resetSnapshot() {
+            capturedBase64 = null;
+            photoPreview.style.display = 'none';
+            video.style.display = 'block';
+
+            document.getElementById('camStatusOverlay').innerHTML = '<span class="dot-live"></span> KAMERA AKTIF';
+            document.getElementById('btnSnap').style.display = 'block';
+            document.getElementById('btnRetake').style.display = 'none';
         }
 
         function switchMode(targetMode) {
@@ -237,16 +298,13 @@
                 setActiveMode('guest');
                 return;
             }
-
             pendingMode = targetMode;
             document.getElementById('modalPrompt').innerText = `Masukkan Kata Sandi untuk ${targetMode.toUpperCase()} Mode:`;
             document.getElementById('inputPass').value = '';
             document.getElementById('passwordModal').style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('passwordModal').style.display = 'none';
-        }
+        function closeModal() { document.getElementById('passwordModal').style.display = 'none'; }
 
         function verifyPassword() {
             const entered = document.getElementById('inputPass').value;
@@ -271,10 +329,8 @@
             } else {
                 document.getElementById('section-guest').style.display = 'none';
                 document.getElementById('section-dashboard').style.display = 'block';
-                
                 document.getElementById('dash-title').innerText = mode === 'admin' ? "Dashboard Admin" : "Monitoring Superior";
                 document.getElementById('adminExtraTools').style.display = mode === 'admin' ? 'block' : 'none';
-                
                 muatDataMonitoring();
             }
         }
@@ -388,12 +444,7 @@
             }
         }
 
-        function startCamera() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                .then(stream => { video.srcObject = stream; })
-                .catch(err => { console.log("Izin kamera diperlukan untuk absensi IN/OUT."); });
-        }
-
+        // PROSES KIRIM ABSENSI DENGAN FAST GEOLOCATION
         function prosesAbsensi() {
             const nik = document.getElementById('nik').value.trim();
             const nama = inputNama.value;
@@ -405,82 +456,70 @@
             if (!nik || !dataKaryawanMap[nik]) { alert("Masukkan NIK yang valid!"); return; }
             if (!tipeAbsen) { alert("Pilih Tipe Absen!"); return; }
 
-            // Jika Day Off / Cuti, Kirim langsung tanpa foto & tanpa paksa GPS
+            // Kirim Langsung untuk Day Off / Cuti
             if (tipeAbsen === 'OFF' || tipeAbsen === 'CUTI') {
-                statusDiv.innerText = "Mengirim data " + tipeAbsen + "...";
-                document.getElementById('btnAbsen').disabled = true;
-
-                fetch(URL_GOOGLE_SCRIPT, {
-                    method: "POST",
-                    body: JSON.stringify({
-                        nik, nama, tipeAbsen, shift: "OFF", toko: toko || "HQ", lokasi: "-", keterangan, foto: "-"
-                    })
-                })
-                .then(res => res.json())
-                .then(respons => {
-                    if (respons.status === "success") {
-                        statusDiv.innerHTML = "<span style='color:green;'>✓ Pengajuan " + tipeAbsen + " Berhasil!</span>";
-                        document.getElementById('nik').value = "";
-                        inputNama.value = "";
-                        document.getElementById('keterangan').value = "";
-                    } else {
-                        statusDiv.innerHTML = "<span style='color:red;'>" + respons.message + "</span>";
-                    }
-                    document.getElementById('btnAbsen').disabled = false;
-                });
+                kirimKeBackend({ nik, nama, tipeAbsen, shift: "OFF", toko: toko || "HQ", lokasi: "-", keterangan, foto: "-" });
                 return;
             }
 
-            // Jika IN/OUT, Wajib GPS & Foto Kamera
-            if (!shift || !toko) { alert("Lengkapi shift dan toko!"); return; }
+            // Validasi untuk Absen IN / OUT
+            if (!shift || !toko) { alert("Pilih Shift dan Lokasi Toko!"); return; }
+            if (!capturedBase64) { alert("Ambil foto terlebih dahulu sebelum mengirim!"); return; }
 
-            statusDiv.innerText = "Mengambil lokasi GPS...";
-            document.getElementById('btnAbsen').disabled = true;
+            const btnSubmit = document.getElementById('btnAbsen');
+            btnSubmit.disabled = true;
+            statusDiv.innerHTML = `<span style="color: var(--primary);">⏳ Mengambil lokasi GPS & Mengirim data...</span>`;
 
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const koordinat = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-                    cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan);
-                },
-                (err) => {
-                    alert("GPS Wajib Aktif untuk Absen Masuk/Keluar!");
-                    document.getElementById('btnAbsen').disabled = false;
-                },
-                { enableHighAccuracy: true }
-            );
+            // Pengambilan GPS Cepat (Timeout 7 Detik)
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const koordinat = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+                        kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: koordinat, keterangan, foto: capturedBase64 });
+                    },
+                    (error) => {
+                        console.warn("GPS Timeout/Gagal, mengirim tanpa koordinat presisi:", error.message);
+                        // Fallback jika GPS Lambat/Di-block HP
+                        kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: "0.00000, 0.00000", keterangan: keterangan + " (GPS Low-Signal)", foto: capturedBase64 });
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 7000,      // Maksimal tunggu 7 detik agar tidak menggantung
+                        maximumAge: 10000   // Pakai cache GPS terbaru jika ada
+                    }
+                );
+            } else {
+                kirimKeBackend({ nik, nama, tipeAbsen, shift, toko, lokasi: "-", keterangan, foto: capturedBase64 });
+            }
         }
 
-        function cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan) {
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.translate(640, 0); ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0, 640, 480);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-            const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-            ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-            ctx.fillRect(0, 420, 640, 60);
-            ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
-            ctx.fillStyle = "#facc15";
-            ctx.fillText(`${waktu} | ${nik} - ${nama} | ${tipeAbsen}`, 16, 455);
+        function kirimKeBackend(payload) {
+            const btnSubmit = document.getElementById('btnAbsen');
+            btnSubmit.disabled = true;
+            statusDiv.innerHTML = `<span style="color: var(--primary);">⏳ Menyimpan absensi ke Server...</span>`;
 
             fetch(URL_GOOGLE_SCRIPT, {
                 method: "POST",
-                body: JSON.stringify({
-                    nik, nama, tipeAbsen, shift, toko, lokasi: koordinat, keterangan, foto: canvas.toDataURL('image/jpeg', 0.8)
-                })
+                body: JSON.stringify(payload)
             })
             .then(res => res.json())
             .then(respons => {
                 if (respons.status === "success") {
-                    statusDiv.innerHTML = "<span style='color:green;'>✓ Absen Berhasil!</span>";
+                    statusDiv.innerHTML = `<div style="background: #dcfce7; color: #15803d; padding: 10px; border-radius: 8px; margin-top: 10px;">✅ ABSENSI BERHASIL TERKIRIM!</div>`;
+                    
+                    // Reset Form
                     document.getElementById('nik').value = "";
                     inputNama.value = "";
                     document.getElementById('keterangan').value = "";
+                    resetSnapshot();
                 } else {
-                    statusDiv.innerHTML = "<span style='color:red;'>" + respons.message + "</span>";
+                    statusDiv.innerHTML = `<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-top: 10px;">❌ Gagal: ${respons.message}</div>`;
                 }
-                document.getElementById('btnAbsen').disabled = false;
+                btnSubmit.disabled = false;
+            })
+            .catch(err => {
+                statusDiv.innerHTML = `<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-top: 10px;">❌ Koneksi Terputus / Gagal Mengirim. Coba lagi!</div>`;
+                btnSubmit.disabled = false;
             });
         }
     </script>
