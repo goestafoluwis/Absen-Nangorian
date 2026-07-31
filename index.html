@@ -10,6 +10,7 @@
         textarea { resize: vertical; font-family: Arial, sans-serif; }
         button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
         button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .nama-preview { background-color: #e9ecef; color: #495057; font-weight: bold; text-align: left; }
         #video { width: 100%; max-width: 400px; border-radius: 8px; transform: scaleX(-1); }
         #status { font-weight: bold; color: blue; margin-top: 10px; word-wrap: break-word; }
     </style>
@@ -18,16 +19,18 @@
 
     <h2>Absen Team Nangorian</h2>
     
-    <input type="text" id="nama" placeholder="Masukkan Nama Lengkap" required>
+    <!-- Input NIK -->
+    <input type="number" id="nik" placeholder="Masukkan NIK Karyawan" oninput="cekNik()" required>
+    
+    <!-- Nama Otomatis Terisi -->
+    <input type="text" id="nama" class="nama-preview" placeholder="Nama Karyawan Akan Muncul Otomatis" readonly>
 
-    <!-- Pilihan Absen Masuk / Keluar -->
     <select id="tipeAbsen">
         <option value="">-- Pilih Tipe Absen --</option>
         <option value="IN">Absen Masuk (IN)</option>
         <option value="OUT">Absen Keluar (OUT)</option>
     </select>
     
-    <!-- Pilihan Shift Baru -->
     <select id="shift">
         <option value="">-- Pilih Shift --</option>
         <option value="Pagi">Pagi</option>
@@ -35,7 +38,6 @@
         <option value="Middle">Middle</option>
     </select>
 
-    <!-- Dropdown Toko Singkat (ASMD, XMDG, dll) -->
     <select id="toko">
         <option value="">-- Memuat Daftar Toko... --</option>
     </select>
@@ -55,29 +57,50 @@
         const video = document.getElementById('video');
         const statusDiv = document.getElementById('status');
         const selectToko = document.getElementById('toko');
+        const inputNama = document.getElementById('nama');
+        
+        let dataKaryawanMap = {}; // Menampung pasangan NIK -> Nama
 
-        document.addEventListener('DOMContentLoaded', muatDaftarToko);
+        document.addEventListener('DOMContentLoaded', muatDataAwal);
 
-        function muatDaftarToko() {
+        function muatDataAwal() {
             fetch(URL_GOOGLE_SCRIPT)
                 .then(res => res.json())
                 .then(respons => {
                     if (respons.status === "success") {
+                        // 1. Set Data Toko
                         selectToko.innerHTML = '<option value="">-- Pilih Lokasi Toko --</option>';
-                        respons.data.forEach(toko => {
+                        respons.toko.forEach(toko => {
                             const option = document.createElement('option');
-                            option.value = toko.kode; // Menggunakan Kode Toko Singkat
+                            option.value = toko.kode;
                             option.textContent = toko.kode;
                             selectToko.appendChild(option);
                         });
+
+                        // 2. Set Data Karyawan
+                        dataKaryawanMap = respons.karyawan || {};
                     } else {
-                        selectToko.innerHTML = '<option value="">-- Gagal Memuat Toko --</option>';
+                        selectToko.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
                     }
                 })
                 .catch(err => {
-                    console.error("Gagal mengambil data toko:", err);
-                    selectToko.innerHTML = '<option value="">-- Gagal Memuat Toko --</option>';
+                    console.error("Gagal mengambil data awal:", err);
+                    selectToko.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
                 });
+        }
+
+        // Fungsi Otomatis Mencari Nama Berdasarkan NIK
+        function cekNik() {
+            const nikInput = document.getElementById('nik').value.trim();
+            if (dataKaryawanMap[nikInput]) {
+                inputNama.value = dataKaryawanMap[nikInput];
+                inputNama.style.color = "green";
+            } else if (nikInput.length > 0) {
+                inputNama.value = "NIK tidak ditemukan!";
+                inputNama.style.color = "red";
+            } else {
+                inputNama.value = "";
+            }
         }
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -85,14 +108,20 @@
             .catch(err => { alert("Gagal akses kamera. Pastikan izin kamera aktif!"); });
 
         function prosesAbsensi() {
-            const nama = document.getElementById('nama').value;
+            const nik = document.getElementById('nik').value.trim();
+            const nama = inputNama.value;
             const tipeAbsen = document.getElementById('tipeAbsen').value;
             const shift = document.getElementById('shift').value;
             const toko = document.getElementById('toko').value;
             const keterangan = document.getElementById('keterangan').value;
 
-            if (!nama || !tipeAbsen || !shift || !toko) {
-                alert("Kolom Nama, Tipe Absen, Shift, dan Toko wajib diisi!");
+            if (!nik || !dataKaryawanMap[nik]) {
+                alert("Masukkan NIK yang terdaftar dengan benar!");
+                return;
+            }
+
+            if (!tipeAbsen || !shift || !toko) {
+                alert("Kolom Tipe Absen, Shift, dan Toko wajib diisi!");
                 return;
             }
 
@@ -106,7 +135,7 @@
                         const lon = position.coords.longitude.toFixed(5);
                         const koordinat = `${lat}, ${lon}`;
                         
-                        cetakWatermarkDanKirim(nama, tipeAbsen, shift, toko, koordinat, keterangan);
+                        cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan);
                     },
                     (error) => {
                         alert("Gagal mengambil GPS. Izin lokasi wajib diaktifkan!");
@@ -121,7 +150,7 @@
             }
         }
 
-        function cetakWatermarkDanKirim(nama, tipeAbsen, shift, toko, koordinat, keterangan) {
+        function cetakWatermarkDanKirim(nik, nama, tipeAbsen, shift, toko, koordinat, keterangan) {
             statusDiv.innerText = "Memproses foto bukti...";
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
@@ -132,12 +161,12 @@
             ctx.setTransform(1, 0, 0, 1, 0, 0);
 
             const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-            const teksWatermark = `${waktu} | ${tipeAbsen} | GPS: ${koordinat}`;
+            const teksWatermark = `${waktu} | ${nik} - ${nama} | ${tipeAbsen}`;
 
             ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
             ctx.fillRect(0, 430, 640, 50);
 
-            ctx.font = "bold 18px Arial";
+            ctx.font = "bold 16px Arial";
             ctx.fillStyle = "yellow";
             ctx.fillText(teksWatermark, 15, 462);
 
@@ -148,6 +177,7 @@
             fetch(URL_GOOGLE_SCRIPT, {
                 method: "POST",
                 body: JSON.stringify({
+                    nik: nik,
                     nama: nama,
                     tipeAbsen: tipeAbsen,
                     shift: shift,
@@ -160,8 +190,9 @@
             .then(res => res.json())
             .then(respons => {
                 if(respons.status === "success") {
-                    statusDiv.innerHTML = "<span style='color:green; font-weight:bold;'>Absen " + tipeAbsen + " Berhasil Dicatat! Terima Kasih.</span>";
-                    document.getElementById('nama').value = "";
+                    statusDiv.innerHTML = "<span style='color:green; font-weight:bold;'>Absen " + tipeAbsen + " Berhasil! Terima Kasih, " + nama + ".</span>";
+                    document.getElementById('nik').value = "";
+                    inputNama.value = "";
                     document.getElementById('keterangan').value = "";
                 } else {
                     statusDiv.innerHTML = "<span style='color:red; font-weight:bold;'>Gagal: " + respons.message + "</span>";
