@@ -15,6 +15,8 @@
             --border-color: #e5e7eb;
             --danger: #ef4444;
             --success: #10b981;
+            --warning: #f59e0b;
+            --info: #3b82f6;
         }
 
         * {
@@ -35,14 +37,14 @@
 
         .app-container {
             width: 100%;
-            max-width: 480px;
+            max-width: 500px;
             background: var(--card-bg);
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-            padding: 24px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
         }
 
         /* Nav Tab */
@@ -84,7 +86,7 @@
         /* Header Form */
         .header-title {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .header-title h4 {
@@ -96,12 +98,12 @@
         .header-title p {
             font-size: 12px;
             color: var(--text-muted);
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         /* Form Controls */
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .form-group label {
@@ -139,7 +141,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         video, img.preview-img {
@@ -185,7 +187,6 @@
             cursor: not-allowed;
         }
 
-        /* Message Box */
         .msg-box {
             margin-top: 10px;
             padding: 10px;
@@ -195,70 +196,105 @@
             display: none;
         }
 
-        .msg-box.error {
-            display: block;
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .msg-box.success {
-            display: block;
-            background: #d1fae5;
-            color: #065f46;
-        }
+        .msg-box.error { display: block; background: #fee2e2; color: #991b1b; }
+        .msg-box.success { display: block; background: #d1fae5; color: #065f46; }
 
         /* Monitoring Styles */
         .stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 14px;
         }
 
         .stat-card {
             background: #f8fafc;
             border: 1px solid var(--border-color);
-            padding: 12px;
+            padding: 8px 4px;
             border-radius: 8px;
             text-align: center;
         }
 
         .stat-card h3 {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--primary);
         }
 
         .stat-card span {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .btn-refresh {
+            padding: 8px 12px;
+            background: #e0e7ff;
+            color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
         }
 
         .user-card {
             border: 1px solid var(--border-color);
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 12px;
             margin-bottom: 12px;
             background: #fff;
+            position: relative;
         }
 
         .user-card-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 10px;
-            padding-bottom: 6px;
-            border-bottom: 1px id #f1f5f9;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        .user-card-header h5 {
+        .user-info h5 {
             font-size: 14px;
             font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .user-card-header span {
+        .user-info span {
             font-size: 11px;
             color: var(--text-muted);
         }
+
+        .badge-status {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+
+        .badge-status.working { background: #fef3c7; color: #92400e; }
+        .badge-status.done { background: #dbeafe; color: #1e40af; }
+        .badge-status.absent { background: #f3f4f6; color: #6b7280; }
+
+        .badge-late {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .badge-late.on-time { background: #d1fae5; color: #065f46; }
+        .badge-late.late { background: #fee2e2; color: #991b1b; }
 
         .io-grid {
             display: grid;
@@ -304,12 +340,23 @@
             margin-top: 6px;
         }
 
+        .maps-link {
+            display: inline-block;
+            font-size: 10px;
+            color: var(--primary);
+            text-decoration: none;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .maps-link:hover { text-decoration: underline; }
+
         /* Modal Preview */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             justify-content: center;
             align-items: center;
             z-index: 999;
@@ -361,9 +408,9 @@
             <div class="form-group">
                 <label>Shift Kerja</label>
                 <select id="shiftInput" class="form-control" required>
-                    <option value="Pagi">Pagi</option>
-                    <option value="Middle">Middle</option>
-                    <option value="Siang">Siang</option>
+                    <option value="Pagi">Pagi (08:00)</option>
+                    <option value="Middle">Middle (11:00)</option>
+                    <option value="Siang">Siang (13:00)</option>
                 </select>
             </div>
 
@@ -401,21 +448,38 @@
             <p>Pemantauan Kehadiran Tim Hari Ini</p>
         </div>
 
+        <!-- 4 Quick Stat Cards -->
         <div class="stats-grid">
             <div class="stat-card">
                 <h3 id="stat-total">0</h3>
-                <span>Total Karyawan</span>
+                <span>Total Hadir</span>
             </div>
             <div class="stat-card">
-                <h3 id="stat-toko">0</h3>
-                <span>Toko Aktif</span>
+                <h3 id="stat-working" style="color: var(--warning);">0</h3>
+                <span>Bertugas</span>
+            </div>
+            <div class="stat-card">
+                <h3 id="stat-done" style="color: var(--info);">0</h3>
+                <span>Selesai</span>
+            </div>
+            <div class="stat-card">
+                <h3 id="stat-late" style="color: var(--danger);">0</h3>
+                <span>Telat</span>
             </div>
         </div>
 
-        <div class="form-group">
+        <!-- Filters & Refresh -->
+        <div class="filter-row">
             <select id="filterToko" class="form-control" onchange="renderMonitoringList()">
                 <option value="">Semua Lokasi Toko</option>
             </select>
+            <select id="filterStatus" class="form-control" onchange="renderMonitoringList()">
+                <option value="">Semua Status</option>
+                <option value="WORKING">Bertugas (IN)</option>
+                <option value="DONE">Selesai (OUT)</option>
+                <option value="LATE">Terlambat</option>
+            </select>
+            <button class="btn-refresh" onclick="fetchMonitoringData()">🔄</button>
         </div>
 
         <div id="monitoringList">
@@ -439,19 +503,27 @@
 </div>
 
 <script>
-    // MASUKKAN URL GOOGLE APPS SCRIPT KAMU DI SINI
+    // URL Web App Google Apps Script Terbaru
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6ZmTAZf2k1SxZ_HaJkyoKWcg4Drd1M-xITITTr7aVCUHuOlRZ8bHugb-jpwZZcOap_Q/exec"; 
+
+    // Jam Batas Shift Masuk untuk Indikator Telat
+    const SHIFT_LIMIT = {
+        "Pagi": "08:15",
+        "Middle": "11:15",
+        "Siang": "13:15"
+    };
 
     let karyawanMap = {};
     let tokoList = [];
     let currentFotoBase64 = "";
+    let userGeoLocation = "";
     let rawMonitoringData = [];
     let videoStream = null;
 
-    // --- INITIALIZATION ---
     window.addEventListener('DOMContentLoaded', () => {
         initCamera();
         fetchMasterData();
+        getGeoLocation();
     });
 
     function switchTab(tabName) {
@@ -471,6 +543,16 @@
             document.querySelectorAll('.tab-btn')[2].classList.add('active');
             document.getElementById('tab-admin').classList.add('active');
             stopCamera();
+        }
+    }
+
+    // --- GEOLOCATION GPS ---
+    function getGeoLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                pos => { userGeoLocation = `${pos.coords.latitude},${pos.coords.longitude}`; },
+                err => { userGeoLocation = "Lokasi Tidak Diizinkan"; }
+            );
         }
     }
 
@@ -504,7 +586,6 @@
 
         if (!video.srcObject) return;
 
-        // Canvas Compression
         const canvas = document.createElement('canvas');
         const maxWidth = 500;
         const scale = maxWidth / (video.videoWidth || 640);
@@ -514,7 +595,6 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Kompres JPEG Kualitas 0.6 agar ringan & anti-gagal
         currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
         previewImg.src = currentFotoBase64;
@@ -537,7 +617,7 @@
         btnCapture.style.display = 'block';
     }
 
-    // --- FETCH MASTER DATA (Toko & Karyawan) ---
+    // --- FETCH MASTER DATA ---
     async function fetchMasterData() {
         try {
             const res = await fetch(SCRIPT_URL);
@@ -547,7 +627,6 @@
                 karyawanMap = data.karyawan || {};
                 tokoList = data.toko || [];
 
-                // Populate Dropdown Toko
                 const tokoSelect = document.getElementById('tokoInput');
                 const filterToko = document.getElementById('filterToko');
 
@@ -567,15 +646,10 @@
     function lookupNama() {
         const nik = document.getElementById('nikInput').value.trim();
         const namaInput = document.getElementById('namaInput');
-
-        if (karyawanMap[nik]) {
-            namaInput.value = karyawanMap[nik];
-        } else {
-            namaInput.value = "";
-        }
+        namaInput.value = karyawanMap[nik] || "";
     }
 
-    // --- SUBMIT ABSENSI (Kirim Data) ---
+    // --- SUBMIT ABSENSI ---
     async function handleAbsenSubmit(e) {
         e.preventDefault();
 
@@ -594,7 +668,7 @@
             shift: document.getElementById('shiftInput').value,
             toko: document.getElementById('tokoInput').value,
             foto: currentFotoBase64,
-            lokasi: "Online Web",
+            lokasi: userGeoLocation || "Online Web",
             keterangan: document.getElementById('keteranganInput').value.trim()
         };
 
@@ -604,7 +678,6 @@
             msgBox.className = "msg-box";
             msgBox.style.display = "none";
 
-            // PERBAIKAN PENTING: Menggunakan text/plain agar bebas dari blokir CORS
             const response = await fetch(SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -615,9 +688,7 @@
 
             if (result.status === 'success') {
                 showMsg("✅ Absensi Berhasil Disimpan!", "success");
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
+                setTimeout(() => { location.reload(); }, 1500);
             } else {
                 throw new Error(result.message || "Gagal menyimpan absensi.");
             }
@@ -660,18 +731,20 @@
 
     function renderMonitoringList() {
         const selectedToko = document.getElementById('filterToko').value;
+        const selectedStatus = document.getElementById('filterStatus').value;
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
 
-        const filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
+        // Filter Toko
+        let filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
 
         if (filtered.length === 0) {
-            document.getElementById('stat-total').innerText = '0';
-            document.getElementById('stat-toko').innerText = '0';
+            updateStats(0, 0, 0, 0);
             listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
             return;
         }
 
+        // Grouping berdasarkan NIK
         const groupedUser = {};
         filtered.forEach(item => {
             if (!groupedUser[item.nik]) {
@@ -681,25 +754,64 @@
                     toko: item.toko,
                     shift: item.shift,
                     in: null,
-                    out: null
+                    out: null,
+                    isLate: false
                 };
             }
-            if (String(item.tipe).toUpperCase() === 'IN') groupedUser[item.nik].in = item;
+            if (String(item.tipe).toUpperCase() === 'IN') {
+                groupedUser[item.nik].in = item;
+                // Cek Keterlambatan
+                const dIn = new Date(item.timestamp);
+                if (!isNaN(dIn)) {
+                    const timeStr = dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    const limit = SHIFT_LIMIT[item.shift] || "23:59";
+                    if (timeStr > limit) groupedUser[item.nik].isLate = true;
+                }
+            }
             if (String(item.tipe).toUpperCase() === 'OUT') groupedUser[item.nik].out = item;
         });
 
-        const userList = Object.values(groupedUser);
-        document.getElementById('stat-total').innerText = userList.length;
-        const tokoUnik = new Set(userList.map(item => item.toko));
-        document.getElementById('stat-toko').innerText = tokoUnik.size;
+        let userList = Object.values(groupedUser);
+
+        // Calculate Stats
+        let countWorking = 0;
+        let countDone = 0;
+        let countLate = 0;
+
+        userList.forEach(u => {
+            if (u.in && !u.out) countWorking++;
+            if (u.in && u.out) countDone++;
+            if (u.isLate) countLate++;
+        });
+
+        updateStats(userList.length, countWorking, countDone, countLate);
+
+        // Filter Status
+        if (selectedStatus === 'WORKING') userList = userList.filter(u => u.in && !u.out);
+        if (selectedStatus === 'DONE') userList = userList.filter(u => u.in && u.out);
+        if (selectedStatus === 'LATE') userList = userList.filter(u => u.isLate);
+
+        if (userList.length === 0) {
+            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada data sesuai filter.</p>';
+            return;
+        }
 
         userList.forEach(user => {
             const el = document.createElement('div');
             el.className = 'user-card';
 
+            // Badge Working / Done
+            let statusBadge = `<span class="badge-status working">Bertugas</span>`;
+            if (user.in && user.out) statusBadge = `<span class="badge-status done">Selesai</span>`;
+
+            // Badge Telat
+            let lateBadge = `<span class="badge-late on-time">Tepat Waktu</span>`;
+            if (user.isLate) lateBadge = `<span class="badge-late late">Terlambat</span>`;
+
             // --- MASUK (IN) ---
             let inTimeStr = "--:--";
             let inPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
+            let inMapsBtn = "";
 
             if (user.in) {
                 const dIn = new Date(user.in.timestamp);
@@ -708,11 +820,16 @@
                 if (user.in.foto && String(user.in.foto).trim() !== "" && user.in.foto !== "-") {
                     inPhotoHtml = `<img src="${user.in.foto}" alt="Foto IN" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.in.foto}')" onerror="this.outerHTML='<div class=\\'thumb-box\\'>Foto Rusak</div>'">`;
                 }
+
+                if (user.in.lokasi && user.in.lokasi.includes(',')) {
+                    inMapsBtn = `<a href="https://maps.google.com/?q=${user.in.lokasi}" target="_blank" class="maps-link">📌 Lokasi Maps</a>`;
+                }
             }
 
             // --- KELUAR (OUT) ---
             let outTimeStr = "--:--";
             let outPhotoHtml = '<div class="thumb-box">Tanpa Foto</div>';
+            let outMapsBtn = "";
 
             if (user.out) {
                 const dOut = new Date(user.out.timestamp);
@@ -721,13 +838,17 @@
                 if (user.out.foto && String(user.out.foto).trim() !== "" && user.out.foto !== "-") {
                     outPhotoHtml = `<img src="${user.out.foto}" alt="Foto OUT" style="width:100%; height:100%; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="viewLargePhoto('${user.out.foto}')" onerror="this.outerHTML='<div class=\\'thumb-box\\'>Foto Rusak</div>'">`;
                 }
+
+                if (user.out.lokasi && user.out.lokasi.includes(',')) {
+                    outMapsBtn = `<a href="https://maps.google.com/?q=${user.out.lokasi}" target="_blank" class="maps-link">📌 Lokasi Maps</a>`;
+                }
             }
 
             el.innerHTML = `
                 <div class="user-card-header">
-                    <div>
-                        <h5>${user.nama}</h5>
-                        <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong></span>
+                    <div class="user-info">
+                        <h5>${user.nama} ${statusBadge}</h5>
+                        <span>NIK: ${user.nik} | Shift: <strong>${user.shift}</strong> | ${lateBadge}</span>
                     </div>
                     <span style="font-weight:700; color:var(--primary); font-size:12px;">🏪 ${user.toko}</span>
                 </div>
@@ -736,16 +857,25 @@
                         <span class="io-title in">MASUK (IN)</span>
                         <div class="thumb-box">${inPhotoHtml}</div>
                         <div class="io-time">${inTimeStr}</div>
+                        ${inMapsBtn}
                     </div>
                     <div class="io-box">
                         <span class="io-title out">KELUAR (OUT)</span>
                         <div class="thumb-box">${outPhotoHtml}</div>
                         <div class="io-time">${outTimeStr}</div>
+                        ${outMapsBtn}
                     </div>
                 </div>
             `;
             listDiv.appendChild(el);
         });
+    }
+
+    function updateStats(total, working, done, late) {
+        document.getElementById('stat-total').innerText = total;
+        document.getElementById('stat-working').innerText = working;
+        document.getElementById('stat-done').innerText = done;
+        document.getElementById('stat-late').innerText = late;
     }
 
     function viewLargePhoto(src) {
