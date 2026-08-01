@@ -751,7 +751,29 @@
         namaInput.value = karyawanMap[nik] || "";
     }
 
-    async function handleAbsenSubmit(e) {
+    // Helper fungsi untuk mengambil koordinat GPS terkini secara synchronous/async
+function getCurrentLocationAsync() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve(null);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                resolve(`${lat}, ${lng}`);
+            },
+            (error) => {
+                console.warn("GPS Error:", error);
+                resolve(null);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    });
+}
+
+async function handleAbsenSubmit(e) {
     e.preventDefault();
 
     const msgBox = document.getElementById('msgBox');
@@ -773,21 +795,33 @@
         return;
     }
 
-    // 3. VALIDASI GEOFENCING (MAKS. 1000 METER / 1 KM) KHUSUS ABSEN IN
+    // 3. PAKSA AMBIL GPS SAAT INGIN KIRIM ABSEN
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "Mengecek GPS...";
+
+    let freshLocation = await getCurrentLocationAsync();
+    if (freshLocation) {
+        userGeoLocation = freshLocation; // Update lokasi terbaru
+    }
+
+    // 4. VALIDASI GEOFENCING (MAKS. 1000 METER / 1 KM) KHUSUS ABSEN IN
     if (tipeAbsen === 'IN') {
         if (!userGeoLocation || userGeoLocation === "Lokasi Tidak Diizinkan") {
-            alert("📍 Lokasi anda tidak sesuai!\nMohon aktifkan GPS dan izinkan akses lokasi pada browser Anda.");
+            alert("📍 GPS TIDAK AKTIF / DITOLAK!\n\nMohon aktifkan GPS (Lokasi) di HP Anda dan izinkan akses lokasi pada browser untuk dapat melanjutkan absen.");
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "KIRIM ABSENSI";
             return;
         }
 
         const selectedKode = document.getElementById('tokoInput').value;
-        // Cari toko berdasarkan Nama Toko / Kode (Kolom A di Sheets)
         const selectedTokoObj = tokoList.find(t => 
             (t.namaToko || t['Nama Toko'] || t.kode || t.Kode) === selectedKode
         );
 
         if (!selectedTokoObj) {
             alert("❌ Silakan pilih toko terlebih dahulu!");
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "KIRIM ABSENSI";
             return;
         }
 
@@ -795,12 +829,16 @@
 
         if (!storeCoords) {
             alert(`⚠️ Data koordinat toko (${selectedKode}) tidak terbaca dari Google Sheets! Pastikan kolom Latitude & Longitude terisi angka.`);
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "KIRIM ABSENSI";
             return;
         }
 
         const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
         if (userCoords.length !== 2 || isNaN(userCoords[0]) || isNaN(userCoords[1])) {
-            alert("📍 Gagal membaca koordinat GPS Anda. Coba refresh halaman.");
+            alert("📍 Gagal membaca koordinat GPS HP Anda. Coba pastikan GPS aktif dan refresh halaman.");
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "KIRIM ABSENSI";
             return;
         }
 
@@ -813,6 +851,8 @@
         if (distanceMeters > 1000) {
             const distanceKm = (distanceMeters / 1000).toFixed(2);
             alert(`⛔ Lokasi anda tidak sesuai!\n\nJarak Anda saat ini: ±${distanceKm} km (atau ${Math.round(distanceMeters)} meter) dari toko.\nBatas maksimum yang diizinkan adalah 1 km.`);
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "KIRIM ABSENSI";
             return;
         }
     }
@@ -830,7 +870,6 @@
     };
 
     try {
-        btnSubmit.disabled = true;
         btnSubmit.innerText = "Mengirim...";
         msgBox.className = "msg-box";
         msgBox.style.display = "none";
@@ -857,6 +896,7 @@
         btnSubmit.disabled = false;
         btnSubmit.innerText = "KIRIM ABSENSI";
     }
+}
 }    function showMsg(text, type) {
         const msgBox = document.getElementById('msgBox');
         msgBox.innerText = text;
