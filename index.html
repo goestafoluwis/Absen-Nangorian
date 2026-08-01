@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Absensi Geofencing</title>
     <style>
-        /* ==========================================================================
-           1. CSS STYLING DASAR & UI (KEMBALI KE VERSI AWAL YANG OKE)
-           ========================================================================== */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
@@ -22,11 +19,10 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        h2 {
+        h2, h3 {
             text-align: center;
             color: #333;
             margin-top: 0;
-            margin-bottom: 20px;
         }
         .form-group {
             margin-bottom: 15px;
@@ -47,10 +43,9 @@
             font-size: 14px;
             background-color: #fafafa;
         }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #4a90e2;
-            background-color: #fff;
+        input:read-only {
+            background-color: #e9ecef;
+            color: #495057;
         }
         button {
             width: 100%;
@@ -67,36 +62,17 @@
             background-color: #ccc !important;
             cursor: not-allowed;
         }
-        .btn-primary {
-            background-color: #3f51b5;
-            color: white;
-        }
+        .btn-primary { background-color: #3f51b5; color: white; }
         .btn-primary:hover:not(:disabled) { background-color: #303f9f; }
-        
-        .btn-camera {
-            background-color: #e0e0e0;
-            color: #333;
-        }
-        .btn-camera:hover:not(:disabled) { background-color: #d5d5d5; }
-        
-        .btn-retake {
-            background-color: #f44336;
-            color: white;
-            display: none;
-        }
-        .btn-retake:hover:not(:disabled) { background-color: #d32f2f; }
-
+        .btn-camera { background-color: #e0e0e0; color: #333; }
+        .btn-retake { background-color: #f44336; color: white; display: none; }
         .btn-superior {
             background-color: transparent;
             color: #3f51b5;
             border: 2px solid #3f51b5;
-            margin-top: 20px;
-        }
-        .btn-superior:hover {
-            background-color: #e8eaf6;
+            margin-top: 25px;
         }
 
-        /* Area Kamera */
         #camera-container {
             position: relative;
             width: 100%;
@@ -109,7 +85,6 @@
         canvas { display: none; }
         #preview { width: 100%; display: none; border-radius: 8px; }
 
-        /* Pesan Notifikasi */
         .msg-box {
             padding: 12px;
             border-radius: 8px;
@@ -122,13 +97,26 @@
         .msg-box.success { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
         .msg-box.error { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
 
-        /* Area Superior (Hidden by default) */
-        #superiorArea {
+        /* TAB SUPERIOR / ADMIN */
+        #superiorSection {
             display: none;
             margin-top: 20px;
             padding-top: 20px;
             border-top: 2px dashed #ccc;
         }
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 8px; text-align: left; }
+        th { background-color: #3f51b5; color: white; }
+        .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -141,7 +129,7 @@
     <form id="absenForm">
         <div class="form-group">
             <label>Tipe Absen</label>
-            <select id="tipeAbsen" onchange="toggleFormInputs()">
+            <select id="tipeAbsen" onchange="toggleFormMode()">
                 <option value="IN">Absen Masuk (IN)</option>
                 <option value="OUT">Absen Pulang (OUT)</option>
                 <option value="Day Off">Day Off</option>
@@ -151,37 +139,36 @@
 
         <div class="form-group">
             <label>NIK Karyawan</label>
-            <input type="text" id="nikInput" placeholder="Masukkan NIK Anda" required>
+            <input type="text" id="nikInput" placeholder="Ketik NIK Anda..." oninput="autoFillNama()" required>
         </div>
 
         <div class="form-group">
             <label>Nama Lengkap</label>
-            <input type="text" id="namaInput" placeholder="Masukkan Nama Lengkap" required>
+            <input type="text" id="namaInput" placeholder="Nama otomatis muncul..." readonly required>
         </div>
 
-        <div id="extraInputs">
+        <!-- Group Input Khusus Absen IN -->
+        <div id="groupAbsenIn">
             <div class="form-group">
                 <label>Shift</label>
                 <select id="shiftInput">
-                    <option value="Pagi (Max 09:00)">Pagi (Max 09:00)</option>
-                    <option value="Middle">Middle</option>
-                    <option value="Siang">Siang</option>
+                    <option value="Pagi (max jam 09.00)">Pagi (max jam 09.00)</option>
+                    <option value="Middle (max jam 11.00)">Middle (max jam 11.00)</option>
+                    <option value="Siang (max jam 14.00)">Siang (max jam 14.00)</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label>Lokasi Toko</label>
                 <select id="tokoInput">
-                    <option value="">-- Pilih Toko --</option>
-                    <option value="ASMD">ASMD - Plaza Asia Sumedang</option>
-                    <option value="XMDG">XMDG - FS Ruko Tanjung</option>
+                    <option value="">-- Memuat Daftar Toko... --</option>
                 </select>
             </div>
         </div>
 
-        <!-- Tambahan ID cameraGroup untuk disembunyikan saat Cuti/Day Off -->
+        <!-- Group Kamera (Untuk IN dan OUT) -->
         <div class="form-group" id="cameraGroup">
-            <label>Verifikasi Wajah (Foto)</label>
+            <label>Verifikasi Wajah (Foto Selfie)</label>
             <div id="camera-container">
                 <video id="video" autoplay playsinline></video>
                 <img id="preview" alt="Hasil Foto">
@@ -200,79 +187,140 @@
     </form>
 
     <!-- TOMBOL MENU SUPERIOR / ADMIN -->
-    <button type="button" id="btnSuperior" class="btn-superior" onclick="toggleSuperiorMenu()">
-        🔒 Masuk Sebagai Superior
+    <button type="button" class="btn-superior" onclick="toggleSuperiorLogin()">
+        🔒 Akses Superior / Admin
     </button>
 
-    <!-- AREA MONITORING SUPERIOR -->
-    <div id="superiorArea">
-        <h3 style="text-align: center; color: #3f51b5;">Dashboard Superior</h3>
-        <p style="text-align: center; font-size: 13px; color: #666;">Silakan masukkan PIN untuk mengakses data monitoring absensi.</p>
+    <!-- AREA SUPERIOR & MONITORING -->
+    <div id="superiorSection">
+        <h3>Monitoring Kehadiran Staff</h3>
         
-        <div class="form-group">
-            <input type="password" id="pinSuperior" placeholder="Masukkan PIN Superior (Contoh: 1234)">
+        <!-- Form Login Password Admin -->
+        <div id="loginAdminBox">
+            <div class="form-group">
+                <label>Kata Sandi Admin/Superior</label>
+                <input type="password" id="passAdmin" placeholder="Masukkan kata sandi...">
+            </div>
+            <button type="button" class="btn-primary" onclick="authAdmin()">Masuk Dashboard</button>
         </div>
-        <button type="button" class="btn-primary" onclick="loginSuperior()">Cek Data Absensi</button>
+
+        <!-- Dashboard Monitoring Data (Akan terbuka setelah password benar) -->
+        <div id="dashboardAdmin" style="display: none;">
+            <button type="button" class="btn-camera" onclick="loadMonitoringData()" style="margin-bottom: 10px;">🔄 Refresh Data</button>
+            <div class="table-responsive">
+                <table id="tabelAbsensi">
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Nama / NIK</th>
+                            <th>Tipe</th>
+                            <th>Foto</th>
+                            <th>Lokasi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataMonitoring">
+                        <tr><td colspan="5" style="text-align:center;">Klik Refresh Data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
     /* ==========================================================================
-       1. KONFIGURASI & VARIABEL GLOBAL
+       1. KONFIGURASI LINK APPS SCRIPT
        ========================================================================== */
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3pkeaiBt_Zph_ZYg00MblpB_3LroTUnZ0jTDr15qNq8z3TAfKiR_gxuUThdn-yhzCKQ/exec"; // GANTI DENGAN LINK WEB APP GAS ANDA
-    
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3pkeaiBt_Zph_ZYg00MblpB_3LroTUnZ0jTDr15qNq8z3TAfKiR_gxuUThdn-yhzCKQ/exec"; 
+
     let currentFotoBase64 = null;
     let userGeoLocation = null;
     let videoStream = null;
+    
+    // Database Internal sementara (Di-fetch otomatis dari Google Sheet saat load)
+    let databaseKaryawan = {};
+    let databaseToko = [];
 
-    const karyawanMap = {
-        "12345": "Luwis Goestafo",
-        "67890": "Nama Karyawan Lain"
-    };
-
-    const tokoList = [
-        { kode: "ASMD", "Nama Toko": "Plaza Asia Sumedang", latitude: -6.8353, longitude: 107.928133 },
-        { kode: "XMDG", "Nama Toko": "FS Ruko Tanjung", latitude: -6.9061469, longitude: 107.7973664 }
-    ];
-
-    /* ==========================================================================
-       2. FUNGSI INISIALISASI (KAMERA & FORM)
-       ========================================================================== */
     window.onload = () => {
         initCamera();
+        fetchDatabaseSheets();
+        toggleFormMode();
         document.getElementById('absenForm').addEventListener('submit', handleAbsenSubmit);
-        toggleFormInputs(); // Panggil saat awal dimuat
     };
 
-    function toggleFormInputs() {
+    /* ==========================================================================
+       2. LOAD DATABASE DARILINK SPREADSHEET (data_karyawan & data_toko)
+       ========================================================================== */
+    async function fetchDatabaseSheets() {
+        try {
+            const response = await fetch(`${SCRIPT_URL}?action=getInitialData`);
+            const data = await response.json();
+            
+            if(data.karyawan) databaseKaryawan = data.karyawan;
+            if(data.toko) {
+                databaseToko = data.toko;
+                renderDropdownToko(data.toko);
+            }
+        } catch (err) {
+            console.error("Gagal load database:", err);
+        }
+    }
+
+    function renderDropdownToko(listToko) {
+        const select = document.getElementById('tokoInput');
+        select.innerHTML = '<option value="">-- Pilih Toko --</option>';
+        listToko.forEach(item => {
+            // Format: Kode Toko - Nama Toko
+            const optionText = `${item.kode} - ${item.namaToko}`;
+            select.innerHTML += `<option value="${item.kode}">${optionText}</option>`;
+        });
+    }
+
+    /* ==========================================================================
+       3. AUTOFILL NAMA BERDASARKAN NIK
+       ========================================================================== */
+    function autoFillNama() {
+        const nik = document.getElementById('nikInput').value.trim();
+        const namaInput = document.getElementById('namaInput');
+
+        if (databaseKaryawan[nik]) {
+            namaInput.value = databaseKaryawan[nik];
+        } else {
+            namaInput.value = "";
+        }
+    }
+
+    /* ==========================================================================
+       4. LOGIKA PENGATURAN TIPE ABSEN (IN, OUT, DAY OFF, CUTI)
+       ========================================================================== */
+    function toggleFormMode() {
         const tipe = document.getElementById('tipeAbsen').value;
-        const extra = document.getElementById('extraInputs');
+        const groupIn = document.getElementById('groupAbsenIn');
         const cameraGroup = document.getElementById('cameraGroup');
 
         if (tipe === 'IN') {
-            extra.style.display = 'block';
+            groupIn.style.display = 'block';
             cameraGroup.style.display = 'block';
         } else if (tipe === 'OUT') {
-            extra.style.display = 'none';
+            // OUT hanya minta Foto + GPS, tidak usah masukan shift / toko
+            groupIn.style.display = 'none';
             cameraGroup.style.display = 'block';
-        } else { // Day Off & Cuti
-            extra.style.display = 'none';
+        } else { 
+            // Day Off & Cuti
+            groupIn.style.display = 'none';
             cameraGroup.style.display = 'none';
         }
     }
 
     /* ==========================================================================
-       3. LOGIKA KAMERA & FOTO
+       5. KAMERA & GPS
        ========================================================================== */
     async function initCamera() {
-        const video = document.getElementById('video');
         try {
             videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-            video.srcObject = videoStream;
+            document.getElementById('video').srcObject = videoStream;
         } catch (err) {
-            console.error("Gagal akses kamera:", err);
-            // Tidak perlu alert keras agar tidak ganggu yang mau Day Off
+            console.warn("Akses kamera ditolak / tidak tersedia.");
         }
     }
 
@@ -280,17 +328,9 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const preview = document.getElementById('preview');
-        const btnCapture = document.getElementById('btnCapture');
-        const btnRetake = document.getElementById('btnRetake');
-
-        if (!videoStream) {
-            alert("⚠️ Kamera belum siap atau izin ditolak browser!");
-            return;
-        }
 
         canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
-
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -299,234 +339,145 @@
 
         video.style.display = 'none';
         preview.style.display = 'block';
-        btnCapture.style.display = 'none';
-        btnRetake.style.display = 'block';
+        document.getElementById('btnCapture').style.display = 'none';
+        document.getElementById('btnRetake').style.display = 'block';
     }
 
     function retakePhoto() {
-        const video = document.getElementById('video');
-        const preview = document.getElementById('preview');
-        const btnCapture = document.getElementById('btnCapture');
-        const btnRetake = document.getElementById('btnRetake');
-
         currentFotoBase64 = null;
-        preview.style.display = 'none';
-        video.style.display = 'block';
-        btnRetake.style.display = 'none';
-        btnCapture.style.display = 'block';
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('video').style.display = 'block';
+        document.getElementById('btnRetake').style.display = 'none';
+        document.getElementById('btnCapture').style.display = 'block';
     }
 
-    /* ==========================================================================
-       4. LOGIKA FITUR SUPERIOR / ADMIN
-       ========================================================================== */
-    function toggleSuperiorMenu() {
-        const area = document.getElementById('superiorArea');
-        if (area.style.display === 'none' || area.style.display === '') {
-            area.style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        } else {
-            area.style.display = 'none';
-        }
-    }
-
-    function loginSuperior() {
-        const pin = document.getElementById('pinSuperior').value;
-        if (pin === "1234") {
-            alert("✅ Login Berhasil! (Di sini Anda bisa mengarahkan ke link Dashboard Data Sheets)");
-            // window.location.href = "LINK_DASHBOARD_SPREADSHEET_ANDA";
-        } else {
-            alert("❌ PIN Salah! Silakan coba lagi.");
-        }
-    }
-
-    /* ==========================================================================
-       5. HELPER GPS & KOORDINAT (DIJAMIN ANTI ERROR)
-       ========================================================================== */
     function getCurrentLocationAsync() {
         return new Promise((resolve) => {
-            if (!navigator.geolocation) {
-                resolve(null);
-                return;
-            }
+            if (!navigator.geolocation) resolve(null);
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve(`${position.coords.latitude}, ${position.coords.longitude}`);
-                },
-                (error) => {
-                    resolve(null);
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                (pos) => resolve(`${pos.coords.latitude}, ${pos.coords.longitude}`),
+                (err) => resolve(null),
+                { enableHighAccuracy: true, timeout: 10000 }
             );
         });
     }
 
-    function getStoreLatLng(tokoObj) {
-        if (!tokoObj) return null;
-
-        // Antisipasi koma dari Sheet
-        function parseCoord(val) {
-            if (val === undefined || val === null || val === '') return NaN;
-            let strVal = String(val).replace(',', '.').trim();
-            return parseFloat(strVal);
-        }
-
-        const lat = parseCoord(tokoObj['Latitude'] || tokoObj.latitude || tokoObj.Latitude || tokoObj.lat);
-        const lng = parseCoord(tokoObj['Longitude'] || tokoObj.longitude || tokoObj.Longitude || tokoObj.lng);
-
-        if (!isNaN(lat) && !isNaN(lng)) return { lat: lat, lng: lng };
-
-        const lokasiStr = tokoObj['Lokasi'] || tokoObj.lokasi || tokoObj.koordinat || "";
-        if (lokasiStr) {
-            const parts = String(lokasiStr).split(',').map(n => parseCoord(n));
-            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                return { lat: parts[0], lng: parts[1] };
-            }
-        }
-        return null;
-    }
-
-    function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-        const R = 6371000; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
     /* ==========================================================================
-       6. LOGIKA UTAMA SUBMIT ABSENSI
+       6. SUBMIT ABSENSI
        ========================================================================== */
     async function handleAbsenSubmit(e) {
         e.preventDefault();
 
-        const msgBox = document.getElementById('msgBox');
-        const btnSubmit = document.getElementById('btnSubmit');
+        const btn = document.getElementById('btnSubmit');
         const tipeAbsen = document.getElementById('tipeAbsen').value;
-        const nikInput = document.getElementById('nikInput').value.trim();
-        const namaInput = document.getElementById('namaInput').value.trim();
+        const nik = document.getElementById('nikInput').value.trim();
+        const nama = document.getElementById('namaInput').value.trim();
 
-        if (!nikInput || !karyawanMap[nikInput] || namaInput === "") {
-            alert("❌ NIK tidak terdaftar! Silakan periksa kembali.");
-            document.getElementById('nikInput').focus();
+        if (!nama) {
+            alert("❌ NIK tidak ditemukan di database data_karyawan!");
             return;
         }
 
-        // Cek Foto WAJIB jika IN atau OUT
         if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
-            alert("📸 Silakan ambil foto verifikasi terlebih dahulu!");
+            alert("📸 Wajib mengambil foto selfie verifikasi!");
             return;
         }
 
-        btnSubmit.disabled = true;
-        btnSubmit.innerText = "Mengecek GPS...";
+        btn.disabled = true;
+        btn.innerText = "Mengecek Lokasi GPS...";
 
-        let freshLocation = await getCurrentLocationAsync();
-        if (freshLocation) userGeoLocation = freshLocation;
-
-        if (tipeAbsen === 'IN') {
-            if (!userGeoLocation) {
-                alert("📍 GPS TIDAK AKTIF / DITOLAK!\n\nMohon aktifkan Lokasi (GPS) di HP Anda dan izinkan akses di browser.");
-                resetSubmitButton(btnSubmit);
-                return;
-            }
-
-            const selectedKode = document.getElementById('tokoInput').value;
-            
-            // Pencarian toko sudah diperbaiki
-            const selectedTokoObj = tokoList.find(t => 
-                (t['Nama Toko'] || t.namaToko || t.kode || t.Kode) === selectedKode
-            );
-
-            if (!selectedTokoObj) {
-                alert("❌ Silakan pilih toko terlebih dahulu!");
-                resetSubmitButton(btnSubmit);
-                return;
-            }
-
-            const storeCoords = getStoreLatLng(selectedTokoObj);
-            if (!storeCoords) {
-                alert(`⚠️ Data koordinat toko (${selectedKode}) gagal terbaca dari database!`);
-                resetSubmitButton(btnSubmit);
-                return;
-            }
-
-            const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
-            if (userCoords.length !== 2 || isNaN(userCoords[0]) || isNaN(userCoords[1])) {
-                alert("📍 Gagal membaca titik koordinat GPS. Coba refresh halaman.");
-                resetSubmitButton(btnSubmit);
-                return;
-            }
-
-            const distanceMeters = getDistanceFromLatLonInMeters(
-                userCoords[0], userCoords[1], storeCoords.lat, storeCoords.lng
-            );
-
-            if (distanceMeters > 1000) {
-                const distanceKm = (distanceMeters / 1000).toFixed(2);
-                alert(`⛔ Lokasi Anda di luar jangkauan!\n\nJarak saat ini: ±${distanceKm} km (${Math.round(distanceMeters)} meter) dari toko.\nBatas maksimum adalah 1 km.`);
-                resetSubmitButton(btnSubmit);
-                return;
-            }
-        }
+        let locationStr = await getCurrentLocationAsync();
 
         const payload = {
-            nik: nikInput,
-            nama: namaInput,
+            action: "submitAbsen",
+            nik: nik,
+            nama: nama,
             tipeAbsen: tipeAbsen,
             shift: tipeAbsen === 'IN' ? document.getElementById('shiftInput').value : "-",
             toko: tipeAbsen === 'IN' ? document.getElementById('tokoInput').value : "-",
             foto: currentFotoBase64 || "-",
-            lokasi: userGeoLocation || "Gagal mendapatkan lokasi",
+            lokasi: locationStr || "GPS Tidak Aktif",
+            timestamp: new Date().toLocaleString("id-ID"),
             keterangan: document.getElementById('keteranganInput').value.trim()
         };
 
+        btn.innerText = "Mengirim Absensi...";
+
         try {
-            btnSubmit.innerText = "Mengirim Data...";
-            msgBox.style.display = "none";
-
-            if(SCRIPT_URL === "YOUR_GOOGLE_SCRIPT_URL_HERE"){
-                throw new Error("Tolong ganti SCRIPT_URL dengan link Apps Script Anda!");
-            }
-
             const response = await fetch(SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             });
 
-            const result = await response.json();
-
-            if (result.status === 'success') {
+            const res = await response.json();
+            if (res.status === 'success') {
                 showMsg("✅ Absensi Berhasil Disimpan!", "success");
-                setTimeout(() => { location.reload(); }, 2000); 
+                setTimeout(() => location.reload(), 2000);
             } else {
-                throw new Error(result.message || "Gagal menyimpan data absensi.");
+                throw new Error(res.message);
             }
-
         } catch (err) {
-            console.error("Error submitting:", err);
-            showMsg(`❌ Gagal Mengirim: ${err.message}`, "error");
+            showMsg(`❌ Gagal: ${err.message}`, "error");
         } finally {
-            resetSubmitButton(btnSubmit);
-        }
-    }
-
-    function showMsg(message, type) {
-        const msgBox = document.getElementById('msgBox');
-        msgBox.innerText = message;
-        msgBox.className = `msg-box ${type}`;
-        msgBox.style.display = 'block';
-    }
-
-    function resetSubmitButton(btn) {
-        if (btn) {
             btn.disabled = false;
             btn.innerText = "KIRIM ABSENSI";
         }
+    }
+
+    /* ==========================================================================
+       7. LOGIKA MONITORING SUPERIOR & ADMIN
+       ========================================================================== */
+    function toggleSuperiorLogin() {
+        const sec = document.getElementById('superiorSection');
+        sec.style.display = sec.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function authAdmin() {
+        const pass = document.getElementById('passAdmin').value;
+        if (pass === "admin123") { // GANTI SANDI ADMIN DI SINI
+            document.getElementById('loginAdminBox').style.display = 'none';
+            document.getElementById('dashboardAdmin').style.display = 'block';
+            loadMonitoringData();
+        } else {
+            alert("❌ Kata Sandi Salah!");
+        }
+    }
+
+    async function loadMonitoringData() {
+        const tbody = document.getElementById('dataMonitoring');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Memuat data...</td></tr>';
+
+        try {
+            const response = await fetch(`${SCRIPT_URL}?action=getMonitoring`);
+            const res = await response.json();
+
+            if (res.data && res.data.length > 0) {
+                tbody.innerHTML = '';
+                res.data.reverse().forEach(row => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${row.timestamp}</td>
+                            <td><b>${row.nama}</b><br><small>${row.nik}</small></td>
+                            <td>${row.tipeAbsen}</td>
+                            <td>${row.foto !== '-' ? `<img src="${row.foto}" class="img-thumb">` : '-'}</td>
+                            <td><a href="https://maps.google.com/?q=${row.lokasi}" target="_blank">Lihat Map</a></td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada data absensi hari ini.</td></tr>';
+            }
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Gagal mengambil data.</td></tr>';
+        }
+    }
+
+    function showMsg(msg, type) {
+        const box = document.getElementById('msgBox');
+        box.innerText = msg;
+        box.className = `msg-box ${type}`;
+        box.style.display = 'block';
     }
 </script>
 
