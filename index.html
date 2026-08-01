@@ -748,6 +748,15 @@
         const msgBox = document.getElementById('msgBox');
         const btnSubmit = document.getElementById('btnSubmit');
         const tipeAbsen = document.getElementById('tipeAbsen').value;
+        const nikInput = document.getElementById('nikInput').value.trim();
+        const namaInput = document.getElementById('namaInput').value.trim();
+
+        // VALIDASI: CEK APAKAH NIK TERDAFTAR DI DATABASE KARYAWAN
+        if (!nikInput || !karyawanMap[nikInput] || namaInput === "") {
+            alert("❌ NIK tidak terdaftar! Silakan periksa kembali NIK Anda.");
+            document.getElementById('nikInput').focus();
+            return;
+        }
 
         if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
             alert("Silakan ambil foto verifikasi terlebih dahulu!");
@@ -785,8 +794,8 @@
         }
 
         const payload = {
-            nik: document.getElementById('nikInput').value.trim(),
-            nama: document.getElementById('namaInput').value.trim(),
+            nik: nikInput,
+            nama: namaInput,
             tipeAbsen: tipeAbsen,
             shift: tipeAbsen === 'IN' ? document.getElementById('shiftInput').value : "-",
             toko: tipeAbsen === 'IN' ? document.getElementById('tokoInput').value : "-",
