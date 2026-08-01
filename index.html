@@ -743,97 +743,108 @@
     }
 
     async function handleAbsenSubmit(e) {
-        e.preventDefault();
+    e.preventDefault();
 
-        const msgBox = document.getElementById('msgBox');
-        const btnSubmit = document.getElementById('btnSubmit');
-        const tipeAbsen = document.getElementById('tipeAbsen').value;
-        const nikInput = document.getElementById('nikInput').value.trim();
-        const namaInput = document.getElementById('namaInput').value.trim();
+    const msgBox = document.getElementById('msgBox');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const tipeAbsen = document.getElementById('tipeAbsen').value;
+    const nikInput = document.getElementById('nikInput').value.trim();
+    const namaInput = document.getElementById('namaInput').value.trim();
 
-        // VALIDASI: CEK APAKAH NIK TERDAFTAR DI DATABASE KARYAWAN
-        if (!nikInput || !karyawanMap[nikInput] || namaInput === "") {
-            alert("❌ NIK tidak terdaftar! Silakan periksa kembali NIK Anda.");
-            document.getElementById('nikInput').focus();
+    // 1. VALIDASI NIK TERDAFTAR DI DATABASE
+    if (!nikInput || !karyawanMap[nikInput] || namaInput === "") {
+        alert("❌ NIK tidak terdaftar! Silakan periksa kembali NIK Anda.");
+        document.getElementById('nikInput').focus();
+        return;
+    }
+
+    // 2. VALIDASI FOTO KHUSUS ABSEN IN & OUT
+    if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
+        alert("📸 Silakan ambil foto verifikasi terlebih dahulu!");
+        return;
+    }
+
+    // 3. VALIDASI GEOFENCING (MAKS. 100 METER) KHUSUS ABSEN IN
+    if (tipeAbsen === 'IN') {
+        if (!userGeoLocation || userGeoLocation === "Lokasi Tidak Diizinkan") {
+            alert("📍 Lokasi anda tidak sesuai!\nMohon aktifkan GPS dan izinkan akses lokasi pada browser Anda.");
             return;
         }
 
-        if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
-            alert("Silakan ambil foto verifikasi terlebih dahulu!");
+        const selectedKode = document.getElementById('tokoInput').value;
+        const selectedTokoObj = tokoList.find(t => t.kode === selectedKode);
+
+        if (!selectedTokoObj) {
+            alert("❌ Silakan pilih toko terlebih dahulu!");
             return;
         }
 
-        // VALIDASI GEOFENCING 100 METER KHUSUS ABSEN IN (MASUK)
-        if (tipeAbsen === 'IN') {
-            if (!userGeoLocation || userGeoLocation === "Lokasi Tidak Diizinkan") {
-                alert("lokasi anda tidak sesuai (GPS/Izin lokasi belum diaktifkan)");
-                return;
-            }
+        const storeCoords = getStoreLatLng(selectedTokoObj);
 
-            const selectedKode = document.getElementById('tokoInput').value;
-            const selectedTokoObj = tokoList.find(t => t.kode === selectedKode);
-
-            if (selectedTokoObj) {
-                const storeCoords = getStoreLatLng(selectedTokoObj);
-                if (storeCoords) {
-                    const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
-                    if (userCoords.length === 2 && !isNaN(userCoords[0]) && !isNaN(userCoords[1])) {
-                        const distanceMeters = getDistanceFromLatLonInMeters(
-                            userCoords[0], userCoords[1],
-                            storeCoords.lat, storeCoords.lng
-                        );
-
-                        // Jika jarak melebihi 100 meter, stop & beri notif
-                        if (distanceMeters > 100) {
-                            alert(`lokasi anda tidak sesuai (Anda berjarak ±${Math.round(distanceMeters)} meter dari toko, batas maks. 100 meter)`);
-                            return;
-                        }
-                    }
-                }
-            }
+        if (!storeCoords) {
+            alert(`⚠️ Data koordinat toko (${selectedKode}) belum diatur/tidak valid di Google Sheets!`);
+            return;
         }
 
-        const payload = {
-            nik: nikInput,
-            nama: namaInput,
-            tipeAbsen: tipeAbsen,
-            shift: tipeAbsen === 'IN' ? document.getElementById('shiftInput').value : "-",
-            toko: tipeAbsen === 'IN' ? document.getElementById('tokoInput').value : "-",
-            foto: currentFotoBase64 || "-",
-            lokasi: userGeoLocation || "Online Web",
-            keterangan: document.getElementById('keteranganInput').value.trim()
-        };
+        const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
+        if (userCoords.length !== 2 || isNaN(userCoords[0]) || isNaN(userCoords[1])) {
+            alert("📍 Gagal membaca koordinat GPS Anda. Coba refresh halaman.");
+            return;
+        }
 
-        try {
-            btnSubmit.disabled = true;
-            btnSubmit.innerText = "Mengirim...";
-            msgBox.className = "msg-box";
-            msgBox.style.display = "none";
+        const distanceMeters = getDistanceFromLatLonInMeters(
+            userCoords[0], userCoords[1],
+            storeCoords.lat, storeCoords.lng
+        );
 
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'success') {
-                showMsg("✅ Absensi Berhasil Disimpan!", "success");
-                setTimeout(() => { location.reload(); }, 1500);
-            } else {
-                throw new Error(result.message || "Gagal menyimpan absensi.");
-            }
-
-        } catch (err) {
-            console.error("Error submitting:", err);
-            showMsg("❌ Koneksi Terputus / Gagal Mengirim. Coba lagi!", "error");
-        } finally {
-            btnSubmit.disabled = false;
-            btnSubmit.innerText = "KIRIM ABSENSI";
+        // BLOKIR JIKA JARAK > 100 METER
+        if (distanceMeters > 100) {
+            alert(`⛔ Lokasi anda tidak sesuai!\n\nJarak Anda saat ini: ±${Math.round(distanceMeters)} meter dari toko.\nBatas maksimum yang diizinkan adalah 100 meter.`);
+            return;
         }
     }
 
+    // PAYLOAD DATA
+    const payload = {
+        nik: nikInput,
+        nama: namaInput,
+        tipeAbsen: tipeAbsen,
+        shift: tipeAbsen === 'IN' ? document.getElementById('shiftInput').value : "-",
+        toko: tipeAbsen === 'IN' ? document.getElementById('tokoInput').value : "-",
+        foto: currentFotoBase64 || "-",
+        lokasi: userGeoLocation || "Online Web",
+        keterangan: document.getElementById('keteranganInput').value.trim()
+    };
+
+    try {
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "Mengirim...";
+        msgBox.className = "msg-box";
+        msgBox.style.display = "none";
+
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            showMsg("✅ Absensi Berhasil Disimpan!", "success");
+            setTimeout(() => { location.reload(); }, 1500);
+        } else {
+            throw new Error(result.message || "Gagal menyimpan absensi.");
+        }
+
+    } catch (err) {
+        console.error("Error submitting:", err);
+        showMsg("❌ Koneksi Terputus / Gagal Mengirim. Coba lagi!", "error");
+    } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "KIRIM ABSENSI";
+    }
+}
     function showMsg(text, type) {
         const msgBox = document.getElementById('msgBox');
         msgBox.innerText = text;
