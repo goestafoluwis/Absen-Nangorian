@@ -623,9 +623,39 @@
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 pos => { userGeoLocation = `${pos.coords.latitude},${pos.coords.longitude}`; },
-                err => { userGeoLocation = "Lokasi Tidak Diizinkan"; }
+                err => { userGeoLocation = "Lokasi Tidak Diizinkan"; },
+                { enableHighAccuracy: true }
             );
         }
+    }
+
+    // HITUNG JARAK DALAM METER DENGAN FORMULA HAVERSINE
+    function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+        const R = 6371000; // Radius bumi dalam meter
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        return R * c; // Hasil dalam meter
+    }
+
+    // HELPER UNTUK MENGAMBIL KOORDINAT TOKO
+    function getStoreLatLng(tokoObj) {
+        if (!tokoObj) return null;
+        if (tokoObj.lat && tokoObj.lng) return { lat: parseFloat(tokoObj.lat), lng: parseFloat(tokoObj.lng) };
+        if (tokoObj.latitude && tokoObj.longitude) return { lat: parseFloat(tokoObj.latitude), lng: parseFloat(tokoObj.longitude) };
+        
+        const locStr = tokoObj.koordinat || tokoObj.lokasi || tokoObj.geo || "";
+        if (locStr && locStr.includes(',')) {
+            const parts = locStr.split(',').map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                return { lat: parts[0], lng: parts[1] };
+            }
+        }
+        return null;
     }
 
     function handlePhotoUpload(event) {
@@ -720,8 +750,38 @@
         const tipeAbsen = document.getElementById('tipeAbsen').value;
 
         if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
-            showMsg("Silakan ambil foto verifikasi terlebih dahulu!", "error");
+            alert("Silakan ambil foto verifikasi terlebih dahulu!");
             return;
+        }
+
+        // VALIDASI GEOFENCING 100 METER KHUSUS ABSEN IN (MASUK)
+        if (tipeAbsen === 'IN') {
+            if (!userGeoLocation || userGeoLocation === "Lokasi Tidak Diizinkan") {
+                alert("lokasi anda tidak sesuai (GPS/Izin lokasi belum diaktifkan)");
+                return;
+            }
+
+            const selectedKode = document.getElementById('tokoInput').value;
+            const selectedTokoObj = tokoList.find(t => t.kode === selectedKode);
+
+            if (selectedTokoObj) {
+                const storeCoords = getStoreLatLng(selectedTokoObj);
+                if (storeCoords) {
+                    const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
+                    if (userCoords.length === 2 && !isNaN(userCoords[0]) && !isNaN(userCoords[1])) {
+                        const distanceMeters = getDistanceFromLatLonInMeters(
+                            userCoords[0], userCoords[1],
+                            storeCoords.lat, storeCoords.lng
+                        );
+
+                        // Jika jarak melebihi 100 meter, stop & beri notif
+                        if (distanceMeters > 100) {
+                            alert(`lokasi anda tidak sesuai (Anda berjarak ±${Math.round(distanceMeters)} meter dari toko, batas maks. 100 meter)`);
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         const payload = {
@@ -824,8 +884,8 @@
             }
             if (tipeUp === 'IN') {
                 groupedUser[item.nik].in = item;
-                groupedUser[item.nik].shift = item.shift; // Ambil shift dari data IN
-                groupedUser[item.nik].toko = item.toko;   // Ambil toko dari data IN
+                groupedUser[item.nik].shift = item.shift;
+                groupedUser[item.nik].toko = item.toko;
                 const dIn = new Date(item.timestamp);
                 if (!isNaN(dIn)) {
                     const timeStr = dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
