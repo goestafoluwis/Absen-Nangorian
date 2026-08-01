@@ -773,7 +773,7 @@
         return;
     }
 
-    // 3. VALIDASI GEOFENCING (MAKS. 100 METER) KHUSUS ABSEN IN
+    // 3. VALIDASI GEOFENCING (MAKS. 1000 METER / 1 KM) KHUSUS ABSEN IN
     if (tipeAbsen === 'IN') {
         if (!userGeoLocation || userGeoLocation === "Lokasi Tidak Diizinkan") {
             alert("📍 Lokasi anda tidak sesuai!\nMohon aktifkan GPS dan izinkan akses lokasi pada browser Anda.");
@@ -781,7 +781,10 @@
         }
 
         const selectedKode = document.getElementById('tokoInput').value;
-        const selectedTokoObj = tokoList.find(t => t.kode === selectedKode);
+        // Cari toko berdasarkan Nama Toko / Kode (Kolom A di Sheets)
+        const selectedTokoObj = tokoList.find(t => 
+            (t.namaToko || t['Nama Toko'] || t.kode || t.Kode) === selectedKode
+        );
 
         if (!selectedTokoObj) {
             alert("❌ Silakan pilih toko terlebih dahulu!");
@@ -791,7 +794,7 @@
         const storeCoords = getStoreLatLng(selectedTokoObj);
 
         if (!storeCoords) {
-            alert(`⚠️ Data koordinat toko (${selectedKode}) belum diatur/tidak valid di Google Sheets!`);
+            alert(`⚠️ Data koordinat toko (${selectedKode}) tidak terbaca dari Google Sheets! Pastikan kolom Latitude & Longitude terisi angka.`);
             return;
         }
 
@@ -806,9 +809,10 @@
             storeCoords.lat, storeCoords.lng
         );
 
-        // BLOKIR JIKA JARAK > 100 METER
-        if (distanceMeters > 100) {
-            alert(`⛔ Lokasi anda tidak sesuai!\n\nJarak Anda saat ini: ±${Math.round(distanceMeters)} meter dari toko.\nBatas maksimum yang diizinkan adalah 100 meter.`);
+        // BLOKIR JIKA JARAK > 1000 METER (1 KM)
+        if (distanceMeters > 1000) {
+            const distanceKm = (distanceMeters / 1000).toFixed(2);
+            alert(`⛔ Lokasi anda tidak sesuai!\n\nJarak Anda saat ini: ±${distanceKm} km (atau ${Math.round(distanceMeters)} meter) dari toko.\nBatas maksimum yang diizinkan adalah 1 km.`);
             return;
         }
     }
@@ -853,8 +857,7 @@
         btnSubmit.disabled = false;
         btnSubmit.innerText = "KIRIM ABSENSI";
     }
-}
-    function showMsg(text, type) {
+}    function showMsg(text, type) {
         const msgBox = document.getElementById('msgBox');
         msgBox.innerText = text;
         msgBox.className = `msg-box ${type}`;
