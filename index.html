@@ -4,622 +4,589 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Absensi Karyawan</title>
+    <!-- Menggunakan Font Modern -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
+        /* ==========================================================================
+           1. UI / CSS STYLING (MODERN & ELEGAN)
+           ========================================================================== */
         :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --danger: #ef4444;
-            --success: #10b981;
-            --bg-page: #f3f4f6;
-            --bg-card: #ffffff;
+            --primary-color: #2563eb; /* Biru Modern */
+            --primary-hover: #1d4ed8;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
             --text-main: #1f2937;
             --text-muted: #6b7280;
-            --border: #e5e7eb;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --border-color: #d1d5db;
         }
 
         body {
-            background-color: var(--bg-page);
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px 15px;
             color: var(--text-main);
-            padding: 20px 10px;
-            display: flex;
-            justify-content: center;
         }
 
         .container {
-            width: 100%;
             max-width: 480px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            padding: 24px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         }
 
-        .header {
+        .header-title {
             text-align: center;
-            margin-bottom: 24px;
-        }
-
-        .header h1 {
-            font-size: 1.5rem;
-            margin-bottom: 6px;
-            color: var(--primary);
-        }
-
-        .header p {
-            color: var(--text-muted);
-            font-size: 0.875rem;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
         }
 
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         label {
             display: block;
-            font-size: 0.875rem;
+            margin-bottom: 8px;
             font-weight: 600;
-            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        input, select, textarea {
+        input, select {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-        }
-
-        input[readonly] {
+            padding: 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
             background-color: #f9fafb;
-            color: var(--text-muted);
+            transition: all 0.3s ease;
         }
 
-        .camera-container {
-            position: relative;
-            width: 100%;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 10px;
-            display: none;
-            aspect-ratio: 4 / 3;
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background-color: #fff;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
 
-        #videoElement, #photoPreview {
+        /* Styling Tombol */
+        button {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 12px;
+            padding: 15px;
             border: none;
-            border-radius: 8px;
-            font-size: 1rem;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            text-align: center;
-            transition: background-color 0.2s;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            background-color: #9ca3af !important;
+            cursor: not-allowed;
+            transform: none !important;
         }
 
         .btn-primary {
-            background-color: var(--primary);
+            background-color: var(--primary-color);
             color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background-color: var(--primary-hover);
+            transform: translateY(-2px);
         }
-
-        .btn-primary:disabled {
-            background-color: #a5b4fc;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
+        
+        .btn-camera {
             background-color: #e5e7eb;
-            color: var(--text-main);
-            margin-top: 8px;
+            color: #374151;
         }
 
-        .btn-secondary:hover {
-            background-color: #d1d5db;
-        }
-
-        .msg-box {
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            margin-bottom: 16px;
+        .btn-camera:hover:not(:disabled) { background-color: #d1d5db; }
+        
+        .btn-retake {
+            background-color: #ef4444;
+            color: white;
             display: none;
         }
 
-        .msg-success {
-            background-color: #ecfdf5;
-            color: var(--success);
-            border: 1px solid var(--success);
+        .btn-retake:hover:not(:disabled) { background-color: #dc2626; }
+
+        .btn-superior {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            margin-top: 30px;
         }
 
-        .msg-error {
-            background-color: #fef2f2;
-            color: var(--danger);
-            border: 1px solid var(--danger);
+        .btn-superior:hover {
+            background-color: #eff6ff;
         }
 
-        .gps-status {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 4px;
+        /* Area Kamera */
+        #camera-container {
+            position: relative;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #111;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        video { width: 100%; display: block; }
+        canvas { display: none; }
+        #preview { width: 100%; display: none; border-radius: 10px; }
+
+        /* Pesan Notifikasi */
+        .msg-box {
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .msg-box.success { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .msg-box.error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* Area Admin / Superior */
+        #superiorArea {
+            display: none;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px dashed var(--border-color);
+        }
+        
+        .superior-header {
+            text-align: center; 
+            color: var(--text-main); 
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>Absensi Online</h1>
-            <p>Silakan lengkapi form absensi di bawah ini</p>
+<div class="container">
+    <h2 class="header-title">Sistem Absensi</h2>
+    <div id="msgBox" class="msg-box"></div>
+
+    <!-- FORM UTAMA ABSENSI -->
+    <form id="absenForm">
+        
+        <div class="form-group">
+            <label>Tipe Absensi</label>
+            <select id="tipeAbsen" onchange="toggleFormInputs()">
+                <option value="IN">Absen Masuk (IN)</option>
+                <option value="OUT">Absen Pulang (OUT)</option>
+                <!-- DITAMBAHKAN KEMBALI: Day Off & Cuti -->
+                <option value="Day Off">Day Off</option>
+                <option value="Cuti">Cuti</option>
+            </select>
         </div>
 
-        <div id="msgBox" class="msg-box"></div>
+        <div class="form-group">
+            <label>NIK Karyawan</label>
+            <input type="text" id="nikInput" placeholder="Contoh: 12345" required>
+        </div>
 
-        <form id="absenForm">
+        <div class="form-group">
+            <label>Nama Lengkap</label>
+            <input type="text" id="namaInput" placeholder="Masukkan Nama Anda" required>
+        </div>
+
+        <!-- Bagian Input Ekstra (Hanya untuk IN) -->
+        <div id="extraInputs">
             <div class="form-group">
-                <label for="tipeAbsen">Tipe Absen</label>
-                <select id="tipeAbsen" required>
-                    <option value="IN">Masuk (IN)</option>
-                    <option value="OUT">Pulang (OUT)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="nikInput">NIK Karyawan</label>
-                <input type="text" id="nikInput" placeholder="Masukkan NIK Anda..." required autocomplete="off">
-            </div>
-
-            <div class="form-group">
-                <label for="namaInput">Nama Karyawan</label>
-                <input type="text" id="namaInput" placeholder="Nama otomatis terisi..." readonly required>
-            </div>
-
-            <div class="form-group" id="shiftGroup">
-                <label for="shiftInput">Shift Kerja</label>
+                <label>Shift</label>
                 <select id="shiftInput">
-                    <option value="Pagi (Max 09:00)">Pagi (Max 09:00)</option>
-                    <option value="Siang (Max 13:00)">Siang (Max 13:00)</option>
-                    <option value="Middle (Max 11:00)">Middle (Max 11:00)</option>
+                    <option value="Pagi">Pagi (Max 09:00)</option>
+                    <option value="Middle">Middle</option>
+                    <option value="Siang">Siang</option>
                 </select>
             </div>
 
-            <div class="form-group" id="tokoGroup">
-                <label for="tokoInput">Lokasi Toko</label>
+            <div class="form-group">
+                <label>Lokasi Toko</label>
+                <!-- NAMA TOKO DIPERBAIKI -->
                 <select id="tokoInput">
                     <option value="">-- Pilih Toko --</option>
+                    <option value="ASMD">ASMD - Plaza Asia Sumedang</option>
+                    <option value="XMDG">XMDG - FS Ruko Tanjung</option>
                 </select>
-                <div class="gps-status" id="gpsStatusText">Status GPS: Sedang melacak...</div>
             </div>
+        </div>
 
-            <div class="form-group">
-                <label>Verifikasi Wajah (Foto)</label>
-                <div id="cameraArea" class="camera-container">
-                    <video id="videoElement" autoplay playsinline></video>
-                    <img id="photoPreview" src="" alt="Hasil Foto" style="display: none;">
-                </div>
-                <button type="button" class="btn btn-secondary" id="btnCapture">Ambil Foto</button>
+        <!-- Bagian Kamera (Disembunyikan jika Cuti / Day Off) -->
+        <div id="cameraSection" class="form-group">
+            <label>Verifikasi Wajah (Selfie)</label>
+            <div id="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <img id="preview" alt="Hasil Foto">
+                <canvas id="canvas"></canvas>
             </div>
+            <button type="button" id="btnCapture" class="btn-camera" onclick="takeSnapshot()">📸 Ambil Foto</button>
+            <button type="button" id="btnRetake" class="btn-retake" onclick="retakePhoto()">🔄 Ambil Ulang</button>
+        </div>
 
-            <div class="form-group">
-                <label for="keteranganInput">Keterangan (Opsional)</label>
-                <textarea id="keteranganInput" rows="2" placeholder="Catatan opsional..."></textarea>
-            </div>
+        <div class="form-group">
+            <label>Keterangan (Opsional)</label>
+            <input type="text" id="keteranganInput" placeholder="Tambahkan catatan jika perlu...">
+        </div>
 
-            <button type="submit" class="btn btn-primary" id="btnSubmit">KIRIM ABSENSI</button>
-        </form>
+        <button type="submit" id="btnSubmit" class="btn-primary">KIRIM ABSENSI</button>
+    </form>
+
+    <!-- TOMBOL MENU SUPERIOR / ADMIN -->
+    <button type="button" id="btnSuperior" class="btn-superior" onclick="toggleSuperiorMenu()">
+        🔒 Monitoring Superior
+    </button>
+
+    <!-- AREA MONITORING SUPERIOR -->
+    <div id="superiorArea">
+        <h3 class="superior-header">Akses Admin</h3>
+        <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+            Masukkan PIN rahasia untuk melihat rekap absensi.
+        </p>
+        
+        <div class="form-group">
+            <input type="password" id="pinSuperior" placeholder="PIN Superior...">
+        </div>
+        <button type="button" class="btn-primary" onclick="loginSuperior()">Masuk Dashboard</button>
     </div>
+</div>
 
-    <script>
-        // =====================================================================
-        // KONFIGURASI URL APPS SCRIPT
-        // =====================================================================
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3pkeaiBt_Zph_ZYg00MblpB_3LroTUnZ0jTDr15qNq8z3TAfKiR_gxuUThdn-yhzCKQ/exec";
+<script>
+    /* ==========================================================================
+       1. KONFIGURASI & VARIABEL GLOBAL
+       ========================================================================== */
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3pkeaiBt_Zph_ZYg00MblpB_3LroTUnZ0jTDr15qNq8z3TAfKiR_gxuUThdn-yhzCKQ/exec"; // GANTI DENGAN LINK WEB APP GAS ANDA
+    
+    let currentFotoBase64 = null;
+    let userGeoLocation = null;
+    let videoStream = null;
 
-        // STATE GLOBAL
-        let karyawanMap = {};
-        let tokoList = [];
-        let userGeoLocation = "";
-        let currentFotoBase64 = "";
-        let streamVideo = null;
+    // Data Karyawan (Contoh Dummy)
+    const karyawanMap = {
+        "12345": "Luwis Goestafo",
+        "67890": "Nama Karyawan Lain"
+    };
 
-        // ELEMEN DOM
-        const form = document.getElementById('absenForm');
-        const tipeAbsenElem = document.getElementById('tipeAbsen');
-        const shiftGroup = document.getElementById('shiftGroup');
-        const tokoGroup = document.getElementById('tokoGroup');
-        const nikInput = document.getElementById('nikInput');
-        const namaInput = document.getElementById('namaInput');
-        const tokoInput = document.getElementById('tokoInput');
-        const gpsStatusText = document.getElementById('gpsStatusText');
-        const btnSubmit = document.getElementById('btnSubmit');
-        const msgBox = document.getElementById('msgBox');
+    // Data Toko (Pastikan Latitude & Longitude sesuai)
+    const tokoList = [
+        { kode: "ASMD", "Nama Toko": "Plaza Asia Sumedang", latitude: -6.8353, longitude: 107.928133 },
+        { kode: "XMDG", "Nama Toko": "FS Ruko Tanjung", latitude: -6.9061469, longitude: 107.7973664 }
+    ];
 
-        // VIDEO & KAMERA
-        const cameraArea = document.getElementById('cameraArea');
-        const videoElement = document.getElementById('videoElement');
-        const photoPreview = document.getElementById('photoPreview');
+    /* ==========================================================================
+       2. FUNGSI INISIALISASI (KAMERA & FORM)
+       ========================================================================== */
+    window.onload = () => {
+        initCamera();
+        document.getElementById('absenForm').addEventListener('submit', handleAbsenSubmit);
+        toggleFormInputs(); // Jalankan sekali saat load
+    };
+
+    // LOGIKA MENYEMBUNYIKAN FORM BERDASARKAN TIPE ABSEN
+    function toggleFormInputs() {
+        const tipe = document.getElementById('tipeAbsen').value;
+        const extra = document.getElementById('extraInputs');
+        const cameraSec = document.getElementById('cameraSection');
+
+        if (tipe === 'IN') {
+            // Absen Masuk: Butuh Toko, Shift, dan Foto
+            extra.style.display = 'block';
+            cameraSec.style.display = 'block';
+        } else if (tipe === 'OUT') {
+            // Absen Pulang: Hanya butuh Foto, tidak butuh pilih Toko/Shift
+            extra.style.display = 'none';
+            cameraSec.style.display = 'block';
+        } else {
+            // Day Off / Cuti: Tidak butuh pilih Toko/Shift, Tidak butuh Foto Selfie
+            extra.style.display = 'none';
+            cameraSec.style.display = 'none';
+        }
+    }
+
+    /* ==========================================================================
+       3. LOGIKA KAMERA & FOTO
+       ========================================================================== */
+    async function initCamera() {
+        const video = document.getElementById('video');
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            video.srcObject = videoStream;
+        } catch (err) {
+            console.warn("Kamera tidak terdeteksi / izin ditolak.");
+            // Tidak perlu alert keras agar tidak mengganggu jika karyawan sedang Day Off/Cuti
+        }
+    }
+
+    function takeSnapshot() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const preview = document.getElementById('preview');
         const btnCapture = document.getElementById('btnCapture');
+        const btnRetake = document.getElementById('btnRetake');
 
-        // =====================================================================
-        // INISIALISASI HALAMAN SAAT DIMUAT
-        // =====================================================================
-        document.addEventListener('DOMContentLoaded', async () => {
-            initGPS();
-            await fetchInitialData();
-            setupEventListeners();
-        });
+        if (!videoStream) {
+            alert("⚠️ Kamera belum siap atau izin ditolak browser!");
+            return;
+        }
 
-        // =====================================================================
-        // PELACAKAN GPS AWAL
-        // =====================================================================
-        function initGPS() {
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        preview.src = currentFotoBase64;
+
+        video.style.display = 'none';
+        preview.style.display = 'block';
+        btnCapture.style.display = 'none';
+        btnRetake.style.display = 'block';
+    }
+
+    function retakePhoto() {
+        const video = document.getElementById('video');
+        const preview = document.getElementById('preview');
+        const btnCapture = document.getElementById('btnCapture');
+        const btnRetake = document.getElementById('btnRetake');
+
+        currentFotoBase64 = null;
+        preview.style.display = 'none';
+        video.style.display = 'block';
+        btnRetake.style.display = 'none';
+        btnCapture.style.display = 'block';
+    }
+
+    /* ==========================================================================
+       4. LOGIKA FITUR SUPERIOR / ADMIN
+       ========================================================================== */
+    function toggleSuperiorMenu() {
+        const area = document.getElementById('superiorArea');
+        if (area.style.display === 'none' || area.style.display === '') {
+            area.style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        } else {
+            area.style.display = 'none';
+        }
+    }
+
+    function loginSuperior() {
+        const pin = document.getElementById('pinSuperior').value;
+        if (pin === "1234") { // Ganti "1234" dengan PIN rahasia Anda
+            alert("✅ Login Berhasil!");
+            // window.location.href = "LINK_SPREADSHEET_SUPERIOR_ANDA"; 
+        } else {
+            alert("❌ PIN Salah! Silakan coba lagi.");
+        }
+    }
+
+    /* ==========================================================================
+       5. HELPER GPS & KOORDINAT (SUDAH DIPERBAIKI ANTI-ERROR SHEET)
+       ========================================================================== */
+    function getCurrentLocationAsync() {
+        return new Promise((resolve) => {
             if (!navigator.geolocation) {
-                userGeoLocation = "Lokasi Tidak Diizinkan";
-                gpsStatusText.innerText = "Status GPS: Browser tidak mendukung";
+                resolve(null);
                 return;
             }
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    userGeoLocation = `${pos.coords.latitude}, ${pos.coords.longitude}`;
-                    gpsStatusText.innerText = "Status GPS: Terkunci (Aktif)";
-                },
-                (err) => {
-                    console.warn("GPS awal gagal:", err);
-                    userGeoLocation = "Lokasi Tidak Diizinkan";
-                    gpsStatusText.innerText = "Status GPS: Belum aktif / Tidak diizinkan";
-                },
+                (position) => resolve(`${position.coords.latitude}, ${position.coords.longitude}`),
+                (error) => resolve(null),
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
+        });
+    }
+
+    function getStoreLatLng(tokoObj) {
+        if (!tokoObj) return null;
+
+        function parseCoord(val) {
+            if (val === undefined || val === null || val === '') return NaN;
+            let strVal = String(val).replace(',', '.').trim(); // Antisipasi koma dari Sheet
+            return parseFloat(strVal);
         }
 
-        // ASYNC HELPER: AMBIL GPS TERBARU SECARA PAKSA SAAT KLIK SUBMIT
-        function getCurrentLocationAsync() {
-            return new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    resolve(null);
-                    return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        resolve(`${lat}, ${lng}`);
-                    },
-                    (error) => {
-                        console.warn("GPS Error saat kirim:", error);
-                        resolve(null);
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
+        const lat = parseCoord(tokoObj['Latitude'] || tokoObj.latitude || tokoObj.Latitude || tokoObj.lat);
+        const lng = parseCoord(tokoObj['Longitude'] || tokoObj.longitude || tokoObj.Longitude || tokoObj.lng);
+
+        if (!isNaN(lat) && !isNaN(lng)) return { lat: lat, lng: lng };
+
+        const lokasiStr = tokoObj['Lokasi'] || tokoObj.lokasi || tokoObj.koordinat || "";
+        if (lokasiStr) {
+            const parts = String(lokasiStr).split(',').map(n => parseCoord(n));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                return { lat: parts[0], lng: parts[1] };
+            }
+        }
+        return null;
+    }
+
+    function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+        const R = 6371000; 
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    /* ==========================================================================
+       6. LOGIKA UTAMA SUBMIT ABSENSI
+       ========================================================================== */
+    async function handleAbsenSubmit(e) {
+        e.preventDefault();
+
+        const msgBox = document.getElementById('msgBox');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const tipeAbsen = document.getElementById('tipeAbsen').value;
+        const nikInput = document.getElementById('nikInput').value.trim();
+        const namaInput = document.getElementById('namaInput').value.trim();
+
+        // Validasi NIK Kosong
+        if (!nikInput || namaInput === "") {
+            alert("❌ NIK dan Nama harus diisi!");
+            return;
+        }
+
+        // Cek Foto WAJIB jika IN atau OUT
+        if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
+            alert("📸 Silakan ambil foto selfie absensi terlebih dahulu!");
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "Memproses...";
+
+        // Ambil GPS (Hanya wajib di-cek strict jika Absen IN)
+        let freshLocation = await getCurrentLocationAsync();
+        if (freshLocation) userGeoLocation = freshLocation;
+
+        // LOGIKA GEOFENCING (HANYA BERLAKU JIKA ABSEN IN)
+        if (tipeAbsen === 'IN') {
+            if (!userGeoLocation) {
+                alert("📍 GPS TIDAK AKTIF!\n\nMohon nyalakan GPS di HP Anda dan izinkan browser mengakses lokasi.");
+                resetSubmitButton(btnSubmit);
+                return;
+            }
+
+            const selectedKode = document.getElementById('tokoInput').value;
+            if (!selectedKode) {
+                alert("❌ Silakan pilih lokasi toko!");
+                resetSubmitButton(btnSubmit);
+                return;
+            }
+
+            // PENCARIAN TOKO DIPERBAIKI
+            const selectedTokoObj = tokoList.find(t => 
+                (t['Nama Toko'] || t.namaToko || t.kode || t.Kode) === selectedKode
+            );
+
+            const storeCoords = getStoreLatLng(selectedTokoObj);
+            if (!storeCoords) {
+                alert(`⚠️ Data koordinat untuk toko ${selectedKode} gagal terbaca. Hubungi Admin.`);
+                resetSubmitButton(btnSubmit);
+                return;
+            }
+
+            const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
+            if (userCoords.length !== 2 || isNaN(userCoords[0]) || isNaN(userCoords[1])) {
+                alert("📍 Gagal membaca titik GPS Anda.");
+                resetSubmitButton(btnSubmit);
+                return;
+            }
+
+            // Hitung Jarak
+            const distanceMeters = getDistanceFromLatLonInMeters(
+                userCoords[0], userCoords[1], storeCoords.lat, storeCoords.lng
+            );
+
+            // Batas 1 KM (1000 meter)
+            if (distanceMeters > 1000) {
+                const distanceKm = (distanceMeters / 1000).toFixed(2);
+                alert(`⛔ ANDA BERADA DI LUAR RADIUS TOKO!\n\nJarak Anda saat ini: ±${distanceKm} km (${Math.round(distanceMeters)} meter).\nMaksimal absen adalah 1 km dari titik toko.`);
+                resetSubmitButton(btnSubmit);
+                return;
+            }
+        }
+
+        // BUNGKUS PAYLOAD DATA
+        const payload = {
+            nik: nikInput,
+            nama: namaInput,
+            tipeAbsen: tipeAbsen,
+            shift: tipeAbsen === 'IN' ? document.getElementById('shiftInput').value : "-",
+            toko: tipeAbsen === 'IN' ? document.getElementById('tokoInput').value : "-",
+            foto: currentFotoBase64 || "-",
+            lokasi: userGeoLocation || "Tidak Terlacak",
+            keterangan: document.getElementById('keteranganInput').value.trim()
+        };
+
+        try {
+            btnSubmit.innerText = "Mengirim Data...";
+            msgBox.style.display = "none";
+
+            if(SCRIPT_URL === "YOUR_GOOGLE_SCRIPT_URL_HERE"){
+                throw new Error("Link Script URL belum dimasukkan pada kode HTML.");
+            }
+
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
             });
-        }
 
-        // =====================================================================
-        // AMBIL DATA KARYAWAN & TOKO DARI GOOGLE APPS SCRIPT
-        // =====================================================================
-        async function fetchInitialData() {
-            try {
-                const response = await fetch(SCRIPT_URL);
-                const data = await response.json();
+            const result = await response.json();
 
-                if (data.status === "success") {
-                    // Peta data karyawan (NIK -> Nama)
-                    karyawanMap = data.karyawan || {};
-                    
-                    // List toko
-                    tokoList = data.toko || [];
-                    tokoInput.innerHTML = '<option value="">-- Pilih Toko --</option>';
-                    tokoList.forEach(toko => {
-                        const kode = toko.kode || toko.Kode || toko['Nama Store'] || '';
-                        const nama = toko.namaToko || toko['Nama Toko'] || kode;
-                        if (kode) {
-                            const opt = document.createElement('option');
-                            opt.value = kode;
-                            opt.textContent = `${kode} - ${nama}`;
-                            tokoInput.appendChild(opt);
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error("Gagal memuat data master:", error);
-                showMsg("⚠️ Gagal memuat data Toko & Karyawan dari server. Coba refresh halaman.", "error");
-            }
-        }
-
-        // =====================================================================
-        // EVENT LISTENER
-        // =====================================================================
-        function setupEventListeners() {
-            // Sembunyikan field Shift & Toko jika Tipe Absen OUT
-            tipeAbsenElem.addEventListener('change', () => {
-                if (tipeAbsenElem.value === 'OUT') {
-                    shiftGroup.style.display = 'none';
-                    tokoGroup.style.display = 'none';
-                } else {
-                    shiftGroup.style.display = 'block';
-                    tokoGroup.style.display = 'block';
-                }
-            });
-
-            // Auto-fill Nama berdasarkan NIK
-            nikInput.addEventListener('input', () => {
-                const nik = nikInput.value.trim();
-                namaInput.value = karyawanMap[nik] || "";
-            });
-
-            // Tombol Ambil Foto / Ulangi Foto
-            btnCapture.addEventListener('click', toggleCamera);
-
-            // Tombol Kirim Absensi
-            form.addEventListener('submit', handleAbsenSubmit);
-        }
-
-        // =====================================================================
-        // LOGIKA KAMERA & AMBIL FOTO
-        // =====================================================================
-        async function toggleCamera() {
-            // Jika sedang preview foto, ubah tombol kembali untuk ambil ulang
-            if (photoPreview.style.display === 'block') {
-                photoPreview.style.display = 'none';
-                videoElement.style.display = 'block';
-                btnCapture.innerText = "Jepret Foto";
-                await startCamera();
-                return;
+            if (result.status === 'success') {
+                showMsg(`✅ Absensi ${tipeAbsen} Berhasil Disimpan!`, "success");
+                setTimeout(() => { location.reload(); }, 2000); 
+            } else {
+                throw new Error(result.message || "Gagal menyimpan data absensi.");
             }
 
-            // Jika kamera belum nyala, hidupkan kamera
-            if (!streamVideo) {
-                await startCamera();
-                return;
-            }
-
-            // Jepret gambar dari video streams
-            const canvas = document.createElement('canvas');
-            canvas.width = videoElement.videoWidth || 640;
-            canvas.height = videoElement.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-            currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
-            photoPreview.src = currentFotoBase64;
-            
-            // Tampilkan Preview
-            videoElement.style.display = 'none';
-            photoPreview.style.display = 'block';
-            btnCapture.innerText = "Ambil Ulang Foto";
-
-            stopCamera();
+        } catch (err) {
+            console.error("Error submitting:", err);
+            showMsg(`❌ Gagal Mengirim: ${err.message}`, "error");
+        } finally {
+            resetSubmitButton(btnSubmit);
         }
+    }
 
-        async function startCamera() {
-            try {
-                cameraArea.style.display = 'block';
-                videoElement.style.display = 'block';
-                photoPreview.style.display = 'none';
-                btnCapture.innerText = "Jepret Foto";
+    function showMsg(message, type) {
+        const msgBox = document.getElementById('msgBox');
+        msgBox.innerText = message;
+        msgBox.className = `msg-box ${type}`;
+        msgBox.style.display = 'block';
+    }
 
-                streamVideo = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "user" },
-                    audio: false
-                });
-                videoElement.srcObject = streamVideo;
-            } catch (err) {
-                alert("❌ Tidak dapat mengakses kamera! Pastikan izin kamera telah diberikan pada browser.");
-            }
+    function resetSubmitButton(btn) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "KIRIM ABSENSI";
         }
+    }
+</script>
 
-        function stopCamera() {
-            if (streamVideo) {
-                streamVideo.getTracks().forEach(track => track.stop());
-                streamVideo = null;
-            }
-        }
-
-        // =====================================================================
-        // HELPER: PERHITUNGAN JARAK ANTARA 2 TITIK (HAVERSINE FORMULA)
-        // =====================================================================
-        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-            const R = 6371000; // Radius Bumi (meter)
-            const dLat = deg2rad(lat2 - lat1);
-            const dLon = deg2rad(lon2 - lon1);
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
-
-        function deg2rad(deg) {
-            return deg * (Math.PI/180);
-        }
-
-        // =====================================================================
-        // HELPER: MEMBACA KOORDINAT TOKO SECARA FLEKSIBEL
-        // =====================================================================
-        function getStoreLatLng(tokoObj) {
-            if (!tokoObj) return null;
-
-            // Cek properti Latitude & Longitude (termasuk besar/kecil huruf header)
-            const lat = parseFloat(tokoObj.latitude || tokoObj.Latitude || tokoObj.lat || tokoObj.Lat);
-            const lng = parseFloat(tokoObj.longitude || tokoObj.Longitude || tokoObj.lng || tokoObj.Lng);
-
-            if (!isNaN(lat) && !isNaN(lng)) {
-                return { lat: lat, lng: lng };
-            }
-
-            // Alternatif jika koordinat ditulis gabung di 1 kolom (contoh: "-6.8353, 107.928133")
-            const lokasiStr = tokoObj.lokasi || tokoObj.Lokasi || tokoObj.koordinat || tokoObj.Koordinat || "";
-            if (lokasiStr) {
-                const parts = lokasiStr.split(',').map(n => parseFloat(n.trim()));
-                if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                    return { lat: parts[0], lng: parts[1] };
-                }
-            }
-
-            return null;
-        }
-
-        // =====================================================================
-        // FUNGSI UTAMA: KIRIM DATA ABSENSI KE SERVER
-        // =====================================================================
-        async function handleAbsenSubmit(e) {
-            e.preventDefault();
-
-            const tipeAbsen = tipeAbsenElem.value;
-            const nikVal = nikInput.value.trim();
-            const namaVal = namaInput.value.trim();
-
-            // 1. VALIDASI NIK TERDAFTAR DI DATABASE
-            if (!nikVal || !karyawanMap[nikVal] || namaVal === "") {
-                alert("❌ NIK tidak terdaftar! Silakan periksa kembali NIK Anda.");
-                nikInput.focus();
-                return;
-            }
-
-            // 2. VALIDASI FOTO WAJIB (UNTUK IN & OUT)
-            if ((tipeAbsen === 'IN' || tipeAbsen === 'OUT') && !currentFotoBase64) {
-                alert("📸 Silakan ambil foto verifikasi terlebih dahulu!");
-                return;
-            }
-
-            // Status tombol loading sementara pelacakan GPS
-            btnSubmit.disabled = true;
-            btnSubmit.innerText = "Mengecek GPS...";
-
-            // 3. PAKSA AMBIL GPS TERKINI SECARA REAL-TIME
-            let freshLocation = await getCurrentLocationAsync();
-            if (freshLocation) {
-                userGeoLocation = freshLocation;
-                gpsStatusText.innerText = "Status GPS: Terkunci (Aktif)";
-            }
-
-            // 4. VALIDASI GEOFENCING (1.000 METER / 1 KM) KHUSUS ABSEN MASUK (IN)
-            if (tipeAbsen === 'IN') {
-                if (!userGeoLocation || userGeoLocation === "Lokasi Tidak Diizinkan") {
-                    alert("📍 GPS TIDAK AKTIF / DITOLAK!\n\nMohon aktifkan GPS (Lokasi) di HP Anda dan izinkan akses lokasi pada browser untuk meneruskan absensi.");
-                    resetSubmitButton();
-                    return;
-                }
-
-                const selectedKode = tokoInput.value;
-                const selectedTokoObj = tokoList.find(t => 
-                    (t.namaToko || t['Nama Toko'] || t.kode || t['Nama Store'] || t.Kode) === selectedKode
-                );
-
-                if (!selectedTokoObj) {
-                    alert("❌ Silakan pilih toko terlebih dahulu!");
-                    resetSubmitButton();
-                    return;
-                }
-
-                const storeCoords = getStoreLatLng(selectedTokoObj);
-
-                if (!storeCoords) {
-                    alert(`⚠️ Data koordinat toko (${selectedKode}) tidak terbaca dari Google Sheets!\nPastikan kolom Latitude & Longitude pada tab Toko terisi angka.`);
-                    resetSubmitButton();
-                    return;
-                }
-
-                const userCoords = userGeoLocation.split(',').map(n => parseFloat(n.trim()));
-                if (userCoords.length !== 2 || isNaN(userCoords[0]) || isNaN(userCoords[1])) {
-                    alert("📍 Gagal membaca titik GPS HP Anda. Pastikan GPS aktif lalu coba refresh halaman.");
-                    resetSubmitButton();
-                    return;
-                }
-
-                // Hitung jarak (dalam meter)
-                const distanceMeters = getDistanceFromLatLonInMeters(
-                    userCoords[0], userCoords[1],
-                    storeCoords.lat, storeCoords.lng
-                );
-
-                // BLOKIR JIKA RADIUS DI ATAS 1.000 METER (1 KM)
-                if (distanceMeters > 1000) {
-                    const distanceKm = (distanceMeters / 1000).toFixed(2);
-                    alert(`⛔ Lokasi Anda tidak sesuai!\n\nJarak Anda saat ini: ±${distanceKm} km (${Math.round(distanceMeters)} meter) dari toko.\nBatas maksimum yang diizinkan adalah 1 km.`);
-                    resetSubmitButton();
-                    return;
-                }
-            }
-
-            // 5. SUSUN DATA PAYLOAD
-            const payload = {
-                nik: nikVal,
-                nama: namaVal,
-                tipeAbsen: tipeAbsen,
-                shift: tipeAbsen === 'IN' ? document.getElementById('shiftInput').value : "-",
-                toko: tipeAbsen === 'IN' ? document.getElementById('tokoInput').value : "-",
-                foto: currentFotoBase64 || "-",
-                lokasi: userGeoLocation || "Online Web",
-                keterangan: document.getElementById('keteranganInput').value.trim()
-            };
-
-            // 6. PROSES KIRIM KE APPS SCRIPT
-            try {
-                btnSubmit.innerText = "Mengirim...";
-                msgBox.style.display = "none";
-
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    showMsg("✅ Absensi Berhasil Disimpan!", "success");
-                    setTimeout(() => { location.reload(); }, 1500);
-                } else {
-                    throw new Error(result.message || "Gagal menyimpan absensi.");
-                }
-
-            } catch (err) {
-                console.error("Error submitting:", err);
-                showMsg("❌ Koneksi Terputus / Gagal Mengirim. Coba lagi!", "error");
-            } finally {
-                resetSubmitButton();
-            }
-        }
-
-        // =====================================================================
-        // HELPER FUNGSI LAINNYA
-        // =====================================================================
-        function resetSubmitButton() {
-            btnSubmit.disabled = false;
-            btnSubmit.innerText = "KIRIM ABSENSI";
-        }
-
-        function showMsg(text, type) {
-            msgBox.textContent = text;
-            msgBox.className = `msg-box msg-${type}`;
-            msgBox.style.display = "block";
-        }
-    </script>
 </body>
 </html>
