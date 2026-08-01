@@ -644,19 +644,28 @@
 
     // HELPER UNTUK MENGAMBIL KOORDINAT TOKO
     function getStoreLatLng(tokoObj) {
-        if (!tokoObj) return null;
-        if (tokoObj.lat && tokoObj.lng) return { lat: parseFloat(tokoObj.lat), lng: parseFloat(tokoObj.lng) };
-        if (tokoObj.latitude && tokoObj.longitude) return { lat: parseFloat(tokoObj.latitude), lng: parseFloat(tokoObj.longitude) };
-        
-        const locStr = tokoObj.koordinat || tokoObj.lokasi || tokoObj.geo || "";
-        if (locStr && locStr.includes(',')) {
-            const parts = locStr.split(',').map(s => parseFloat(s.trim()));
-            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                return { lat: parts[0], lng: parts[1] };
-            }
-        }
-        return null;
+    if (!tokoObj) return null;
+
+    // Ambil nilai latitude dan longitude (mendukung nama properti huruf besar/kecil)
+    const lat = parseFloat(tokoObj.latitude || tokoObj.Latitude || tokoObj.lat || tokoObj.Lat);
+    const lng = parseFloat(tokoObj.longitude || tokoObj.Longitude || tokoObj.lng || tokoObj.Lng);
+
+    // Jika keduanya berupa angka valid, kembalikan objek lat-lng
+    if (!isNaN(lat) && !isNaN(lng)) {
+        return { lat: lat, lng: lng };
     }
+
+    // Alternatif jika lokasi ditulis gabung dalam satu kolom (misal: "-6.8353, 107.928133")
+    const lokasiStr = tokoObj.lokasi || tokoObj.koordinat || tokoObj.Koordinat || "";
+    if (lokasiStr) {
+        const parts = lokasiStr.split(',').map(n => parseFloat(n.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            return { lat: parts[0], lng: parts[1] };
+        }
+    }
+
+    return null;
+}
 
     function handlePhotoUpload(event) {
         const file = event.target.files[0];
