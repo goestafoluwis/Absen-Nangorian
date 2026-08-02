@@ -198,9 +198,17 @@
         }
 
         .filter-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
             margin-bottom: 12px;
+        }
+
+        .filter-row-top {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            margin-bottom: 8px;
         }
 
         .btn-refresh {
@@ -448,7 +456,7 @@
     <div id="tab-superior" class="tab-content">
         <div class="header-title">
             <h4>Monitoring Superior</h4>
-            <p>Pemantauan Kehadiran Tim Hari Ini</p>
+            <p>Pemantauan Kehadiran Tim</p>
         </div>
 
         <div class="stats-grid">
@@ -470,6 +478,12 @@
             </div>
         </div>
 
+        <!-- PERUBAHAN: Menambahkan Filter Tanggal di sini -->
+        <div class="filter-row-top">
+            <input type="date" id="filterTanggal" class="form-control" onchange="renderMonitoringList()">
+            <button class="btn-refresh" onclick="fetchMonitoringData()">🔄</button>
+        </div>
+        
         <div class="filter-row">
             <select id="filterToko" class="form-control" onchange="renderMonitoringList()">
                 <option value="">Semua Lokasi Toko</option>
@@ -480,7 +494,6 @@
                 <option value="DONE">Selesai (OUT)</option>
                 <option value="LATE">Terlambat</option>
             </select>
-            <button class="btn-refresh" onclick="fetchMonitoringData()">🔄</button>
         </div>
 
         <div id="monitoringList">
@@ -546,6 +559,13 @@
     window.addEventListener('DOMContentLoaded', () => {
         fetchMasterData();
         getGeoLocation();
+        
+        // PERUBAHAN: Set default tanggal ke hari ini secara otomatis
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('filterTanggal').value = `${yyyy}-${mm}-${dd}`;
     });
 
     function switchTab(tabName) {
@@ -765,12 +785,6 @@
         }
     }
 
-    function showMsg(text, type) {
-        const msgBox = document.getElementById('msgBox');
-        msgBox.innerText = text;
-        msgBox.className = `msg-box ${type}`;
-    }
-
     async function fetchMonitoringData() {
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data absensi...</p>';
@@ -793,14 +807,35 @@
 
     function renderMonitoringList() {
         const selectedToko = document.getElementById('filterToko').value;
+        const selectedDate = document.getElementById('filterTanggal').value; // PERUBAHAN: Mengambil value tanggal
+        const selectedStatus = document.getElementById('filterStatus').value; // PERUBAHAN: Menangkap status filter
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
 
-        let filtered = rawMonitoringData.filter(item => !selectedToko || item.toko === selectedToko);
+        // PERUBAHAN: Logika filter ditambahkan pemeriksaan tanggal
+        let filtered = rawMonitoringData.filter(item => {
+            // Cek Toko
+            const matchToko = !selectedToko || item.toko === selectedToko;
+            
+            // Cek Tanggal
+            let matchDate = true;
+            if (selectedDate && item.timestamp) {
+                const itemDate = new Date(item.timestamp);
+                if (!isNaN(itemDate)) {
+                    const yyyy = itemDate.getFullYear();
+                    const mm = String(itemDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(itemDate.getDate()).padStart(2, '0');
+                    const itemDateStr = `${yyyy}-${mm}-${dd}`;
+                    matchDate = (itemDateStr === selectedDate);
+                }
+            }
+
+            return matchToko && matchDate;
+        });
 
         if (filtered.length === 0) {
             updateStats(0, 0, 0, 0);
-            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi hari ini.</p>';
+            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi untuk tanggal ini.</p>';
             return;
         }
 
@@ -824,8 +859,8 @@
             }
             if (tipeUp === 'IN') {
                 groupedUser[item.nik].in = item;
-                groupedUser[item.nik].shift = item.shift; // Ambil shift dari data IN
-                groupedUser[item.nik].toko = item.toko;   // Ambil toko dari data IN
+                groupedUser[item.nik].shift = item.shift; 
+                groupedUser[item.nik].toko = item.toko;   
                 const dIn = new Date(item.timestamp);
                 if (!isNaN(dIn)) {
                     const timeStr = dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -843,6 +878,16 @@
 
         let userList = Object.values(groupedUser);
 
+        // PERUBAHAN: Menyesuaikan tampilan berdasarkan filter status (Bertugas / Selesai / Telat)
+        if (selectedStatus) {
+            userList = userList.filter(u => {
+                if (selectedStatus === "WORKING") return u.in && !u.out;
+                if (selectedStatus === "DONE") return u.in && u.out;
+                if (selectedStatus === "LATE") return u.isLate;
+                return true;
+            });
+        }
+
         let countWorking = 0;
         let countDone = 0;
         let countLate = 0;
@@ -854,6 +899,11 @@
         });
 
         updateStats(userList.length, countWorking, countDone, countLate);
+
+        if (userList.length === 0) {
+            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada data yang sesuai dengan filter.</p>';
+            return;
+        }
 
         userList.forEach(user => {
             const el = document.createElement('div');
