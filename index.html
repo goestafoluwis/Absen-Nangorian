@@ -420,12 +420,13 @@
         <form id="formAbsen" onsubmit="handleAbsenSubmit(event)">
             <div class="form-group">
                 <label>NIK Karyawan</label>
-                <input type="text" id="nikInput" class="form-control" placeholder="Masukkan NIK" required oninput="lookupNama()">
+                <input type="text" id="nikInput" class="form-control" placeholder="Masukkan NIK" required 
+                       oninput="lookupNama()" onkeyup="lookupNama()" onchange="lookupNama()" onpaste="setTimeout(lookupNama, 100)">
             </div>
 
             <div class="form-group">
                 <label>Nama Karyawan</label>
-                <input type="text" id="namaInput" class="form-control" placeholder="Otomatis terisi..." readonly required style="background-color: #f0fdf4;">
+                <input type="text" id="namaInput" class="form-control" placeholder="Memuat data karyawan..." readonly required style="background-color: #f0fdf4;">
             </div>
 
             <div class="form-group">
@@ -442,7 +443,7 @@
                 <label>Shift Kerja</label>
                 <select id="shiftInput" class="form-control" required>
                     <option value="Pagi">Pagi (Max 09:00)</option>
-                    <option value="Middle">Middle (11:00)</option>
+                    <option value="Middle">Middle (11:15)</option>
                     <option value="Siang">Siang (Max 14:00)</option>
                 </select>
             </div>
@@ -518,7 +519,7 @@
         <!-- Filter Karyawan Searchable (Live Search) -->
         <div class="form-group searchable-dropdown">
             <input type="text" id="searchKaryawanInput" class="form-control" placeholder="🔍 Ketik & Cari Nama Karyawan..." autocomplete="off" onkeyup="filterDropdownSlicer()" onclick="showDropdownSlicer()">
-            <input type="hidden" id="filterKaryawanVal" value=""> <!-- Hidden NIK -->
+            <input type="hidden" id="filterKaryawanVal" value="">
             <div id="karyawanDropdownList" class="dropdown-list">
                 <!-- Pilihan karyawan diisi otomatis oleh JS -->
             </div>
@@ -583,6 +584,7 @@
 
     let isSuperiorAuthenticated = false;
     let isAdminAuthenticated = false;
+    let isMasterDataLoaded = false;
 
     // BATAS MAKSIMAL KETERLAMBATAN SHIFT
     const SHIFT_LIMIT = {
@@ -601,7 +603,7 @@
         fetchMasterData();
         getGeoLocation();
         
-        // Set default tanggal ke hari ini secara otomatis
+        // Set default tanggal ke hari ini
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -750,12 +752,26 @@
 
     async function fetchMasterData() {
         try {
+            isMasterDataLoaded = false;
+            const namaInput = document.getElementById('namaInput');
+            if (namaInput && !namaInput.value) {
+                namaInput.placeholder = "Memuat data karyawan...";
+            }
+
             const res = await fetch(SCRIPT_URL);
             const data = await res.json();
 
             if (data.status === 'success') {
-                karyawanMap = data.karyawan || {};
+                // Standarisasi NIK ke String bersih untuk menghindari mismatch
+                karyawanMap = {};
+                if (data.karyawan) {
+                    Object.keys(data.karyawan).forEach(key => {
+                        karyawanMap[String(key).trim()] = data.karyawan[key];
+                    });
+                }
+                
                 tokoList = data.toko || [];
+                isMasterDataLoaded = true;
 
                 document.getElementById('admin-count-karyawan').innerText = Object.keys(karyawanMap).length;
                 document.getElementById('admin-count-toko').innerText = tokoList.length;
@@ -767,7 +783,6 @@
                 tokoSelect.innerHTML = '<option value="">-- Pilih Toko --</option>';
                 filterToko.innerHTML = '<option value="">Semua Lokasi Toko</option>';
                 
-                // Set default dropdown list
                 dropdownList.innerHTML = `<div class="dropdown-item" onclick="pilihKaryawanSlicer('', 'Semua Karyawan')">🔄 <strong>Semua Karyawan (Reset)</strong></div>`;
 
                 tokoList.forEach(t => {
@@ -775,25 +790,52 @@
                     filterToko.innerHTML += `<option value="${t.kode}">${t.kode} - ${t.nama}</option>`;
                 });
 
-                // Populate karyawan ke searchable list
                 Object.keys(karyawanMap).forEach(nik => {
                     const nama = karyawanMap[nik];
                     const safeNama = nama.replace(/'/g, "\\'"); 
                     dropdownList.innerHTML += `<div class="dropdown-item" onclick="pilihKaryawanSlicer('${nik}', '${safeNama}')"><strong>${nama}</strong> <span style="color:#6b7280; font-size:11px;">(${nik})</span></div>`;
                 });
+
+                // Trigger lookup otomatis jika user sudah terlanjur mengetik NIK saat data diproses
+                lookupNama();
             }
         } catch (err) {
             console.error("Gagal mengambil master data:", err);
+            const namaInput = document.getElementById('namaInput');
+            if (namaInput) namaInput.placeholder = "Gagal memuat data (Muat ulang halaman)";
         }
     }
 
+    // FUNGSI AUTO-LOOKUP NIK REALTIME (FIXED)
     function lookupNama() {
-        const nik = document.getElementById('nikInput').value.trim();
+        const nikInput = document.getElementById('nikInput');
         const namaInput = document.getElementById('namaInput');
-        namaInput.value = karyawanMap[nik] || "";
+
+        if (!nikInput || !namaInput) return;
+
+        const nik = String(nikInput.value).trim();
+
+        if (!nik) {
+            namaInput.value = "";
+            namaInput.placeholder = "Otomatis terisi...";
+            return;
+        }
+
+        if (!isMasterDataLoaded) {
+            namaInput.value = "";
+            namaInput.placeholder = "Sedang sinkronisasi data...";
+            return;
+        }
+
+        if (karyawanMap[nik]) {
+            namaInput.value = karyawanMap[nik];
+        } else {
+            namaInput.value = "";
+            namaInput.placeholder = "❌ NIK Tidak Ditemukan!";
+        }
     }
 
-    // --- FUNGSI LIVE SEARCH DROPDOWN ---
+    // FUNGSI LIVE SEARCH DROPDOWN SUPERIOR
     function showDropdownSlicer() {
         document.getElementById('karyawanDropdownList').style.display = 'block';
     }
@@ -817,13 +859,11 @@
     }
 
     function pilihKaryawanSlicer(nik, nama) {
-        document.getElementById('filterKaryawanVal').value = nik; // Simpan NIK rahasia
-        document.getElementById('searchKaryawanInput').value = nama; // Tampilkan nama di input
-        document.getElementById('karyawanDropdownList').style.display = 'none'; // Tutup list
-        
-        renderMonitoringList(); // Refresh data monitor
+        document.getElementById('filterKaryawanVal').value = nik; 
+        document.getElementById('searchKaryawanInput').value = nama; 
+        document.getElementById('karyawanDropdownList').style.display = 'none'; 
+        renderMonitoringList(); 
     }
-    // ------------------------------------
 
     async function handleAbsenSubmit(e) {
         e.preventDefault();
@@ -902,19 +942,15 @@
         const selectedToko = document.getElementById('filterToko').value;
         const selectedDate = document.getElementById('filterTanggal').value;
         const selectedStatus = document.getElementById('filterStatus').value;
-        const selectedKaryawan = document.getElementById('filterKaryawanVal').value; // NIK dari search input
+        const selectedKaryawan = document.getElementById('filterKaryawanVal').value;
 
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
 
         let filtered = rawMonitoringData.filter(item => {
-            // Cek Toko
             const matchToko = !selectedToko || item.toko === selectedToko;
-            
-            // Cek Karyawan berdasarkan NIK
             const matchKaryawan = !selectedKaryawan || String(item.nik) === String(selectedKaryawan);
             
-            // Cek Tanggal
             let matchDate = true;
             if (selectedDate && item.timestamp) {
                 const itemDate = new Date(item.timestamp);
@@ -988,7 +1024,6 @@
         });
 
         let userList = Object.values(groupedUser);
-
         userList.sort((a, b) => b.tanggalStr.localeCompare(a.tanggalStr));
 
         if (selectedStatus) {
