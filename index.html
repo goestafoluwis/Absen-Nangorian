@@ -373,7 +373,7 @@
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6ZmTAZf2k1SxZ_HaJkyoKWcg4Drd1M-xITITTr7aVCUHuOlRZ8bHugb-jpwZZcOap_Q/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyiFTFBhmTftHv1NSCCwbQ72HCOgNm-84_M2pJqb3xndcV5MDeis3YKOTVXY9jQRDnebQ/exec"; 
 
     const MAX_RADIUS_METERS = 100;
     const SHIFT_LIMIT = { "Pagi": "09:00", "Middle": "11:15", "Siang": "14:00" };
@@ -463,41 +463,45 @@
     }
 
     function handleTipeAbsenChange() {
-        const tipe = document.getElementById('tipeAbsen').value;
-        const cameraSection = document.getElementById('cameraSection');
-        const shiftSection = document.getElementById('shiftSection');
-        const tokoSection = document.getElementById('tokoSection');
-        const labelFoto = document.getElementById('labelFoto');
+    const tipe = document.getElementById('tipeAbsen').value;
+    const cameraSection = document.getElementById('cameraSection');
+    const shiftSection = document.getElementById('shiftSection');
+    const tokoSection = document.getElementById('tokoSection');
+    const labelFoto = document.getElementById('labelFoto');
 
-        const shiftInput = document.getElementById('shiftInput');
-        const tokoInput = document.getElementById('tokoInput');
+    const shiftInput = document.getElementById('shiftInput');
+    const tokoInput = document.getElementById('tokoInput');
 
-        if (tipe === 'OUT') {
-            shiftSection.style.display = 'none';
-            tokoSection.style.display = 'none';
-            shiftInput.removeAttribute('required');
-            tokoInput.removeAttribute('required');
+    if (tipe === 'OUT') {
+        shiftSection.style.display = 'none';
+        tokoSection.style.display = 'none';
+        shiftInput.removeAttribute('required');
+        tokoInput.removeAttribute('required');
 
-            cameraSection.style.display = 'block';
-            labelFoto.innerText = "Verifikasi Wajah (Foto Pulang)";
-        } else if (tipe === 'Day Off' || tipe === 'Cuti') {
-            shiftSection.style.display = 'none';
-            tokoSection.style.display = 'none';
-            shiftInput.removeAttribute('required');
-            tokoInput.removeAttribute('required');
-
-            cameraSection.style.display = 'block';
-            labelFoto.innerText = "Unggah Foto / Lampiran Surat Izin";
-        } else {
-            cameraSection.style.display = 'block';
-            shiftSection.style.display = 'block';
-            tokoSection.style.display = 'block';
-            shiftInput.setAttribute('required', 'true');
-            tokoInput.setAttribute('required', 'true');
-            labelFoto.innerText = "Verifikasi Wajah (Foto Masuk)";
-        }
-        checkGeofencing();
+        cameraSection.style.display = 'block';
+        labelFoto.innerText = "Verifikasi Wajah (Foto Pulang)";
+    } else if (tipe === 'Day Off' || tipe === 'Cuti') {
+        // Sembunyikan Shift, Toko, dan Kamera sepenuhnya
+        shiftSection.style.display = 'none';
+        tokoSection.style.display = 'none';
+        cameraSection.style.display = 'none'; 
+        
+        shiftInput.removeAttribute('required');
+        tokoInput.removeAttribute('required');
+        
+        // Reset foto jika sebelumnya sempat ambil gambar
+        resetFoto(); 
+    } else {
+        // Mode Masuk (IN)
+        cameraSection.style.display = 'block';
+        shiftSection.style.display = 'block';
+        tokoSection.style.display = 'block';
+        shiftInput.setAttribute('required', 'true');
+        tokoInput.setAttribute('required', 'true');
+        labelFoto.innerText = "Verifikasi Wajah (Foto Masuk)";
     }
+    checkGeofencing();
+}
 
     function getGeoLocation() {
         if (navigator.geolocation) {
