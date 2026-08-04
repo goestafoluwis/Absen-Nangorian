@@ -223,6 +223,37 @@
             white-space: nowrap;
         }
 
+        /* Style untuk Searchable Dropdown */
+        .searchable-dropdown {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .dropdown-item {
+            padding: 10px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background-color: #f8fafc; color: var(--primary); font-weight: 600; }
+
         .user-card {
             border: 1px solid var(--border-color);
             border-radius: 12px;
@@ -484,11 +515,13 @@
             <button class="btn-refresh" onclick="fetchMonitoringData()">🔄</button>
         </div>
         
-        <!-- Filter Slicer Karyawan -->
-        <div class="form-group" style="margin-bottom: 8px;">
-            <select id="filterKaryawan" class="form-control" onchange="renderMonitoringList()">
-                <option value="">Semua Karyawan (Slicer)</option>
-            </select>
+        <!-- Filter Karyawan Searchable (Live Search) -->
+        <div class="form-group searchable-dropdown">
+            <input type="text" id="searchKaryawanInput" class="form-control" placeholder="🔍 Ketik & Cari Nama Karyawan..." autocomplete="off" onkeyup="filterDropdownSlicer()" onclick="showDropdownSlicer()">
+            <input type="hidden" id="filterKaryawanVal" value=""> <!-- Hidden NIK -->
+            <div id="karyawanDropdownList" class="dropdown-list">
+                <!-- Pilihan karyawan diisi otomatis oleh JS -->
+            </div>
         </div>
 
         <!-- Filter Toko & Status -->
@@ -574,6 +607,15 @@
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         document.getElementById('filterTanggal').value = `${yyyy}-${mm}-${dd}`;
+    });
+
+    // Menutup dropdown jika user klik di luar area
+    document.addEventListener('click', function(event) {
+        const searchInput = document.getElementById('searchKaryawanInput');
+        const dropdownList = document.getElementById('karyawanDropdownList');
+        if (searchInput && dropdownList && event.target !== searchInput && !dropdownList.contains(event.target)) {
+            dropdownList.style.display = 'none';
+        }
     });
 
     function switchTab(tabName) {
@@ -720,20 +762,24 @@
 
                 const tokoSelect = document.getElementById('tokoInput');
                 const filterToko = document.getElementById('filterToko');
-                const filterKaryawan = document.getElementById('filterKaryawan'); // Element Slicer
+                const dropdownList = document.getElementById('karyawanDropdownList');
 
                 tokoSelect.innerHTML = '<option value="">-- Pilih Toko --</option>';
                 filterToko.innerHTML = '<option value="">Semua Lokasi Toko</option>';
-                filterKaryawan.innerHTML = '<option value="">Semua Karyawan (Slicer)</option>'; // Reset Slicer
+                
+                // Set default dropdown list
+                dropdownList.innerHTML = `<div class="dropdown-item" onclick="pilihKaryawanSlicer('', 'Semua Karyawan')">🔄 <strong>Semua Karyawan (Reset)</strong></div>`;
 
                 tokoList.forEach(t => {
                     tokoSelect.innerHTML += `<option value="${t.kode}">${t.kode} - ${t.nama}</option>`;
                     filterToko.innerHTML += `<option value="${t.kode}">${t.kode} - ${t.nama}</option>`;
                 });
 
-                // Memasukkan data karyawan ke dalam Slicer
+                // Populate karyawan ke searchable list
                 Object.keys(karyawanMap).forEach(nik => {
-                    filterKaryawan.innerHTML += `<option value="${nik}">${karyawanMap[nik]} (${nik})</option>`;
+                    const nama = karyawanMap[nik];
+                    const safeNama = nama.replace(/'/g, "\\'"); 
+                    dropdownList.innerHTML += `<div class="dropdown-item" onclick="pilihKaryawanSlicer('${nik}', '${safeNama}')"><strong>${nama}</strong> <span style="color:#6b7280; font-size:11px;">(${nik})</span></div>`;
                 });
             }
         } catch (err) {
@@ -746,6 +792,38 @@
         const namaInput = document.getElementById('namaInput');
         namaInput.value = karyawanMap[nik] || "";
     }
+
+    // --- FUNGSI LIVE SEARCH DROPDOWN ---
+    function showDropdownSlicer() {
+        document.getElementById('karyawanDropdownList').style.display = 'block';
+    }
+
+    function filterDropdownSlicer() {
+        const input = document.getElementById('searchKaryawanInput');
+        const filter = input.value.toUpperCase();
+        const div = document.getElementById('karyawanDropdownList');
+        const items = div.getElementsByClassName('dropdown-item');
+
+        div.style.display = 'block';
+
+        for (let i = 0; i < items.length; i++) {
+            const txtValue = items[i].textContent || items[i].innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+
+    function pilihKaryawanSlicer(nik, nama) {
+        document.getElementById('filterKaryawanVal').value = nik; // Simpan NIK rahasia
+        document.getElementById('searchKaryawanInput').value = nama; // Tampilkan nama di input
+        document.getElementById('karyawanDropdownList').style.display = 'none'; // Tutup list
+        
+        renderMonitoringList(); // Refresh data monitor
+    }
+    // ------------------------------------
 
     async function handleAbsenSubmit(e) {
         e.preventDefault();
@@ -824,7 +902,7 @@
         const selectedToko = document.getElementById('filterToko').value;
         const selectedDate = document.getElementById('filterTanggal').value;
         const selectedStatus = document.getElementById('filterStatus').value;
-        const selectedKaryawan = document.getElementById('filterKaryawan').value; // Ambil value Slicer
+        const selectedKaryawan = document.getElementById('filterKaryawanVal').value; // NIK dari search input
 
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
@@ -833,7 +911,7 @@
             // Cek Toko
             const matchToko = !selectedToko || item.toko === selectedToko;
             
-            // Cek Karyawan (Slicer)
+            // Cek Karyawan berdasarkan NIK
             const matchKaryawan = !selectedKaryawan || String(item.nik) === String(selectedKaryawan);
             
             // Cek Tanggal
@@ -858,8 +936,6 @@
             return;
         }
 
-        // Variabel untuk mengelompokkan data absensi
-        // Agar history/riwayat dalam 1 hari yang sama tetap tergabung, kita jadikan key = NIK + TANGGAL
         const groupedUser = {};
         filtered.forEach(item => {
             let itemDateStr = "unknown_date";
@@ -913,7 +989,6 @@
 
         let userList = Object.values(groupedUser);
 
-        // Sorting agar tanggal terbaru muncul di atas
         userList.sort((a, b) => b.tanggalStr.localeCompare(a.tanggalStr));
 
         if (selectedStatus) {
@@ -956,7 +1031,6 @@
             let lateBadge = `<span class="badge-late on-time">Tepat Waktu</span>`;
             if (user.isLate) lateBadge = `<span class="badge-late late">Terlambat</span>`;
 
-            // Format tampilan Tanggal
             let displayDate = "";
             if (user.tanggalStr !== "unknown_date") {
                 const parts = user.tanggalStr.split("-");
