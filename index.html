@@ -478,12 +478,20 @@
             </div>
         </div>
 
-        <!-- PERUBAHAN: Menambahkan Filter Tanggal di sini -->
+        <!-- Filter Tanggal -->
         <div class="filter-row-top">
-            <input type="date" id="filterTanggal" class="form-control" onchange="renderMonitoringList()">
+            <input type="date" id="filterTanggal" class="form-control" onchange="renderMonitoringList()" title="Hapus tanggal untuk melihat riwayat lengkap">
             <button class="btn-refresh" onclick="fetchMonitoringData()">🔄</button>
         </div>
         
+        <!-- Filter Slicer Karyawan -->
+        <div class="form-group" style="margin-bottom: 8px;">
+            <select id="filterKaryawan" class="form-control" onchange="renderMonitoringList()">
+                <option value="">Semua Karyawan (Slicer)</option>
+            </select>
+        </div>
+
+        <!-- Filter Toko & Status -->
         <div class="filter-row">
             <select id="filterToko" class="form-control" onchange="renderMonitoringList()">
                 <option value="">Semua Lokasi Toko</option>
@@ -560,7 +568,7 @@
         fetchMasterData();
         getGeoLocation();
         
-        // PERUBAHAN: Set default tanggal ke hari ini secara otomatis
+        // Set default tanggal ke hari ini secara otomatis
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -712,13 +720,20 @@
 
                 const tokoSelect = document.getElementById('tokoInput');
                 const filterToko = document.getElementById('filterToko');
+                const filterKaryawan = document.getElementById('filterKaryawan'); // Element Slicer
 
                 tokoSelect.innerHTML = '<option value="">-- Pilih Toko --</option>';
                 filterToko.innerHTML = '<option value="">Semua Lokasi Toko</option>';
+                filterKaryawan.innerHTML = '<option value="">Semua Karyawan (Slicer)</option>'; // Reset Slicer
 
                 tokoList.forEach(t => {
                     tokoSelect.innerHTML += `<option value="${t.kode}">${t.kode} - ${t.nama}</option>`;
                     filterToko.innerHTML += `<option value="${t.kode}">${t.kode} - ${t.nama}</option>`;
+                });
+
+                // Memasukkan data karyawan ke dalam Slicer
+                Object.keys(karyawanMap).forEach(nik => {
+                    filterKaryawan.innerHTML += `<option value="${nik}">${karyawanMap[nik]} (${nik})</option>`;
                 });
             }
         } catch (err) {
@@ -807,15 +822,19 @@
 
     function renderMonitoringList() {
         const selectedToko = document.getElementById('filterToko').value;
-        const selectedDate = document.getElementById('filterTanggal').value; // PERUBAHAN: Mengambil value tanggal
-        const selectedStatus = document.getElementById('filterStatus').value; // PERUBAHAN: Menangkap status filter
+        const selectedDate = document.getElementById('filterTanggal').value;
+        const selectedStatus = document.getElementById('filterStatus').value;
+        const selectedKaryawan = document.getElementById('filterKaryawan').value; // Ambil value Slicer
+
         const listDiv = document.getElementById('monitoringList');
         listDiv.innerHTML = '';
 
-        // PERUBAHAN: Logika filter ditambahkan pemeriksaan tanggal
         let filtered = rawMonitoringData.filter(item => {
             // Cek Toko
             const matchToko = !selectedToko || item.toko === selectedToko;
+            
+            // Cek Karyawan (Slicer)
+            const matchKaryawan = !selectedKaryawan || String(item.nik) === String(selectedKaryawan);
             
             // Cek Tanggal
             let matchDate = true;
@@ -830,23 +849,39 @@
                 }
             }
 
-            return matchToko && matchDate;
+            return matchToko && matchDate && matchKaryawan;
         });
 
         if (filtered.length === 0) {
             updateStats(0, 0, 0, 0);
-            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi untuk tanggal ini.</p>';
+            listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada data absensi untuk filter ini.</p>';
             return;
         }
 
+        // Variabel untuk mengelompokkan data absensi
+        // Agar history/riwayat dalam 1 hari yang sama tetap tergabung, kita jadikan key = NIK + TANGGAL
         const groupedUser = {};
         filtered.forEach(item => {
-            if (!groupedUser[item.nik]) {
-                groupedUser[item.nik] = {
+            let itemDateStr = "unknown_date";
+            if (item.timestamp) {
+                const itemDate = new Date(item.timestamp);
+                if (!isNaN(itemDate)) {
+                    const yyyy = itemDate.getFullYear();
+                    const mm = String(itemDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(itemDate.getDate()).padStart(2, '0');
+                    itemDateStr = `${yyyy}-${mm}-${dd}`;
+                }
+            }
+
+            const groupKey = `${item.nik}_${itemDateStr}`;
+
+            if (!groupedUser[groupKey]) {
+                groupedUser[groupKey] = {
                     nik: item.nik,
                     nama: item.nama,
                     toko: item.toko,
                     shift: item.shift,
+                    tanggalStr: itemDateStr,
                     in: null,
                     out: null,
                     statusSpecial: null,
@@ -855,30 +890,32 @@
             }
             const tipeUp = String(item.tipe).toUpperCase();
             if (tipeUp === 'DAY OFF' || tipeUp === 'CUTI') {
-                groupedUser[item.nik].statusSpecial = item.tipe;
+                groupedUser[groupKey].statusSpecial = item.tipe;
             }
             if (tipeUp === 'IN') {
-                groupedUser[item.nik].in = item;
-                groupedUser[item.nik].shift = item.shift; 
-                groupedUser[item.nik].toko = item.toko;   
+                groupedUser[groupKey].in = item;
+                groupedUser[groupKey].shift = item.shift; 
+                groupedUser[groupKey].toko = item.toko;   
                 const dIn = new Date(item.timestamp);
                 if (!isNaN(dIn)) {
                     const timeStr = dIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
                     const limit = SHIFT_LIMIT[item.shift] || "23:59";
-                    if (timeStr > limit) groupedUser[item.nik].isLate = true;
+                    if (timeStr > limit) groupedUser[groupKey].isLate = true;
                 }
             }
             if (tipeUp === 'OUT') {
-                groupedUser[item.nik].out = item;
-                if (!groupedUser[item.nik].toko || groupedUser[item.nik].toko === "-") {
-                    groupedUser[item.nik].toko = item.toko;
+                groupedUser[groupKey].out = item;
+                if (!groupedUser[groupKey].toko || groupedUser[groupKey].toko === "-") {
+                    groupedUser[groupKey].toko = item.toko;
                 }
             }
         });
 
         let userList = Object.values(groupedUser);
 
-        // PERUBAHAN: Menyesuaikan tampilan berdasarkan filter status (Bertugas / Selesai / Telat)
+        // Sorting agar tanggal terbaru muncul di atas
+        userList.sort((a, b) => b.tanggalStr.localeCompare(a.tanggalStr));
+
         if (selectedStatus) {
             userList = userList.filter(u => {
                 if (selectedStatus === "WORKING") return u.in && !u.out;
@@ -919,10 +956,18 @@
             let lateBadge = `<span class="badge-late on-time">Tepat Waktu</span>`;
             if (user.isLate) lateBadge = `<span class="badge-late late">Terlambat</span>`;
 
+            // Format tampilan Tanggal
+            let displayDate = "";
+            if (user.tanggalStr !== "unknown_date") {
+                const parts = user.tanggalStr.split("-");
+                displayDate = `<div style="font-size:11px; margin-bottom:4px; color:var(--text-muted);">🗓️ ${parts[2]}/${parts[1]}/${parts[0]}</div>`;
+            }
+
             if (user.statusSpecial) {
                 el.innerHTML = `
                     <div class="user-card-header">
                         <div class="user-info">
+                            ${displayDate}
                             <h5>${user.nama} ${statusBadge}</h5>
                             <span>NIK: ${user.nik}</span>
                         </div>
@@ -968,6 +1013,7 @@
                 el.innerHTML = `
                     <div class="user-card-header">
                         <div class="user-info">
+                            ${displayDate}
                             <h5>${user.nama} ${statusBadge}</h5>
                             <span>NIK: ${user.nik} | Shift: <strong>${user.shift || '-'}</strong> | ${lateBadge}</span>
                         </div>
@@ -991,6 +1037,13 @@
             }
             listDiv.appendChild(el);
         });
+    }
+
+    function showMsg(message, type) {
+        const msgBox = document.getElementById('msgBox');
+        msgBox.innerText = message;
+        msgBox.className = "msg-box " + type;
+        msgBox.style.display = "block";
     }
 
     function updateStats(total, working, done, late) {
